@@ -73,7 +73,7 @@ static String line = "";
 
 while (Serial.available()) {
   char c = (char)Serial.read();
-  
+  Serial.println(c);
 
   if (c == '\n') {
     line.trim(); // removes \r and whitespace
