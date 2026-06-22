@@ -76,3 +76,5 @@ while True:
 
     print("Sent:", list(payload), "chk:", chk)
     time.sleep(0.1)
+    
+    #sam is hung

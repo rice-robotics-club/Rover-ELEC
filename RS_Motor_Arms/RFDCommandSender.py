@@ -13,7 +13,7 @@ MOTOR_02_ID = 127  # W/S Keys
 
 # --- SMOOTHING TUNES ---
 MOVE_INCREMENT = 0.12  # Larger steps to bridge radio gaps
-KP_ARM = 25.0          # Stiff tracking
+KP_ARM = 20.0          # Stiff tracking
 KD_ARM = 2.2           # Damping for smooth stops
 
 # --- STATE ---
@@ -24,9 +24,9 @@ HEADER = bytes([0xAA, 0x55])
 
 try:
     ser = serial.Serial(RADIO_PORT, BAUD, timeout=0.1)
-    print(f"✅ Radio Link Active on {RADIO_PORT}")
+    print(f"Radio Link Active on {RADIO_PORT}")
 except Exception as e:
-    print(f"❌ Radio Error: {e}"); sys.exit(1)
+    print(f"Radio Error: {e}"); sys.exit(1)
 
 def float_to_uint16(v, v_min, v_max):
     v = max(v_min, min(v_max, v))
@@ -54,7 +54,7 @@ def on_press(key):
                 time.sleep(0.05)
                 send_radio_frame(0x03, m_id, bytes([0]*8)) # Op Mode
             is_enabled = True
-            print("✅ Ready.")
+            print("Ready.")
     except: pass
 
 def on_release(key):
@@ -77,8 +77,8 @@ try:
             if active_keys['s']: targets[MOTOR_02_ID] -= MOVE_INCREMENT
             
             # Update targets for ID 7 (04)
-            if active_keys['a']: targets[MOTOR_04_ID] -= MOVE_INCREMENT
-            if active_keys['d']: targets[MOTOR_04_ID] += MOVE_INCREMENT
+            if active_keys['a']: targets[MOTOR_04_ID] -= MOVE_INCREMENT + 0.2
+            if active_keys['d']: targets[MOTOR_04_ID] += MOVE_INCREMENT + 0.2
 
             for m_id in [MOTOR_04_ID, MOTOR_02_ID]:
                 targets[m_id] = max(-12.5, min(12.5, targets[m_id]))
