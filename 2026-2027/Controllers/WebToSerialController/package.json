@@ -1,0 +1,18 @@
+{
+  "name": "webtoserialcontroller",
+  "version": "1.0.0",
+  "description": "Web-based rover control panel with dual serial output for movement and drill/sample collection",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["rover", "serial", "web-controller"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1",
+    "serialport": "^13.0.0",
+    "socket.io": "^4.8.3"
+  }
+}

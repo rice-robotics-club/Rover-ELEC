@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Rover Control Panel</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header>
+      <h1>Rover Control Panel</h1>
+      <div id="connection-indicators">
+        <span id="move-status" class="status-badge disconnected">MOV: Disconnected</span>
+        <span id="drill-status" class="status-badge disconnected">DRL: Disconnected</span>
+        <span id="ws-status" class="status-badge disconnected">WS: Connecting...</span>
+      </div>
+    </header>
+
+    <!-- Speed Control -->
+    <section id="speed-section">
+      <label for="speed-slider">Speed: <span id="speed-value">30000</span></label>
+      <input type="range" id="speed-slider" min="0" max="65535" value="30000" step="1000">
+    </section>
+
+    <!-- Main Controls Grid -->
+    <div id="controls-grid">
+      <!-- Movement D-Pad -->
+      <section id="movement-section">
+        <h2>Movement</h2>
+        <div id="dpad">
+          <button id="btn-forward" class="move-btn" data-command="1">▲<br>Forward</button>
+          <button id="btn-left" class="move-btn" data-command="4">◀<br>Left</button>
+          <button id="btn-stop" class="stop-btn" data-command="0">STOP</button>
+          <button id="btn-right" class="move-btn" data-command="3">▶<br>Right</button>
+          <button id="btn-backward" class="move-btn" data-command="2">▼<br>Back</button>
+        </div>
+      </section>
+
+      <!-- Drill Controls -->
+      <section id="drill-section">
+        <h2>Drill (Motor 0)</h2>
+        <div class="motor-controls">
+          <button id="btn-drill-fwd" class="drill-btn forward-btn" data-command="5">↻ Drill Forward</button>
+          <button id="btn-drill-rev" class="drill-btn reverse-btn" data-command="6">↺ Drill Reverse</button>
+          <button id="btn-drill-stop" class="drill-btn stop-sm-btn" data-command="7">■ Drill Stop</button>
+        </div>
+      </section>
+
+      <!-- Sample Collection Controls -->
+      <section id="sample-section">
+        <h2>Sample Collection (Motor 4)</h2>
+        <div class="motor-controls">
+          <button id="btn-sample-extend" class="sample-btn forward-btn" data-command="17">↓ Extend</button>
+          <button id="btn-sample-retract" class="sample-btn reverse-btn" data-command="18">↑ Retract</button>
+          <button id="btn-sample-stop" class="sample-btn stop-sm-btn" data-command="19">■ Stop</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Emergency Stop Bar -->
+    <section id="emergency-section">
+      <button id="btn-emergency" class="emergency-btn">🛑 EMERGENCY STOP</button>
+    </section>
+
+    <!-- Debug Log -->
+    <section id="debug-section">
+      <div id="debug-header">
+        <h2>Debug Log</h2>
+        <button id="btn-clear-log">Clear</button>
+      </div>
+      <div id="debug-log">
+        <div class="log-entry system">Awaiting serial data...</div>
+      </div>
+    </section>
+
+    <!-- Settings Panel -->
+    <section id="settings-section">
+      <button id="btn-toggle-settings">⚙ Settings</button>
+      <div id="settings-panel" class="hidden">
+        <div class="settings-group">
+          <h3>Movement Port</h3>
+          <label>Path: <input type="text" id="move-port-path" value="/dev/ttyUSB0"></label>
+          <label>Baud: <input type="number" id="move-port-baud" value="115200"></label>
+        </div>
+        <div class="settings-group">
+          <h3>Drill / Sample Port</h3>
+          <label>Path: <input type="text" id="drill-port-path" value="/dev/ttyUSB1"></label>
+          <label>Baud: <input type="number" id="drill-port-baud" value="115200"></label>
+        </div>
+        <button id="btn-apply-settings">Apply & Reconnect</button>
+        <button id="btn-refresh-ports">Refresh Ports</button>
+      </div>
+    </section>
+
+    <!-- Keyboard Help -->
+    <section id="help-section">
+      <details>
+        <summary>⌨ Keyboard Shortcuts</summary>
+        <div class="help-grid">
+          <span><kbd>↑</kbd> / <kbd>W</kbd></span><span>Forward</span>
+          <span><kbd>↓</kbd> / <kbd>S</kbd></span><span>Backward</span>
+          <span><kbd>←</kbd> / <kbd>A</kbd></span><span>Left</span>
+          <span><kbd>→</kbd> / <kbd>D</kbd></span><span>Right</span>
+          <span><kbd>Space</kbd> / <kbd>Esc</kbd></span><span>EMERGENCY STOP</span>
+          <span><kbd>Q</kbd></span><span>Drill Forward</span>
+          <span><kbd>E</kbd></span><span>Drill Reverse</span>
+          <span><kbd>Z</kbd></span><span>Drill Stop</span>
+          <span><kbd>R</kbd></span><span>Sample Extend</span>
+          <span><kbd>F</kbd></span><span>Sample Retract</span>
+          <span><kbd>V</kbd></span><span>Sample Stop</span>
+        </div>
+      </details>
+    </section>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/client.js"></script>
+</body>
+</html>
