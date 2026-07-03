@@ -71,9 +71,9 @@ void setup() {
 bool readJetsonCommand(int &msgOut, int &speedOut) {
   static String line = "";
 
-  while (Serial.available()) {
-    char c = (char)Serial.read();
-    Serial.println((int) c);
+while (Serial.available()) {
+  char c = (char)Serial.read();
+  //Serial.println(c);
 
     if (c == '\n' || c == 13) {
       Serial.println("New Line");
