@@ -97,6 +97,12 @@ class DXLHat:
 
     # --- Convenience methods -----------------------------------------------
 
+    def check_connection(self) -> bool:
+        """Verify the Arduino Hat is responding on the UART."""
+        resp = self.send("HELP")
+        # The HELP response starts with "OK --- Commands ---"
+        return resp.startswith("OK --- Commands ---")
+
     def ping(self, motor_id: int) -> bool:
         resp = self.send(f"P {motor_id}")
         return resp.startswith("OK Ping")
@@ -215,7 +221,17 @@ def interactive_shell(hat: DXLHat):
     print(f"Motors: {list(MOTOR_IDS)}")
     print("Type 'help' for commands, 'quit' to exit.\n")
 
-    # Verify connection by scanning on startup
+    # Check Arduino connectivity first
+    print("Checking Arduino...", end=" ", flush=True)
+    if not hat.check_connection():
+        print("NO RESPONSE")
+        print("ERROR: Cannot communicate with Arduino Hat.")
+        print("Check: power, wiring (GPIO14→pin7, GPIO15→pin6, GND→GND)")
+        print("       Arduino firmware uploaded? Correct board selected?")
+        return
+    print("OK")
+
+    # Scan motors
     print("Scanning motors...")
     results = hat.scan()
     for mid, alive in results.items():
