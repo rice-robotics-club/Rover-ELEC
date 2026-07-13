@@ -262,7 +262,7 @@ void processCommand(const char *cmd) {
           if (!validID(id)) { CMD_SERIAL.println("ERR invalid ID"); return; }
           if (len > 64) len = 64;
           uint8_t data[64] = {0};
-          int8_t err = dxl.read((uint8_t)id, (uint16_t)addr, data, (uint16_t)len);
+          int32_t err = dxl.read((uint8_t)id, (uint16_t)addr, 2, data, (uint16_t)len);
           if (err == 0) {
             CMD_SERIAL.print("OK Read "); CMD_SERIAL.print(id);
             CMD_SERIAL.print(" ["); CMD_SERIAL.print(addr);
@@ -288,14 +288,14 @@ void processCommand(const char *cmd) {
           if (sscanf(args, "%d %d %d", &id, &addr, &val) == 3) {
             if (!validID(id)) { CMD_SERIAL.println("ERR invalid ID"); return; }
             uint8_t data[2] = { (uint8_t)(val & 0xFF), (uint8_t)((val >> 8) & 0xFF) };
-            int8_t err = dxl.write((uint8_t)id, (uint16_t)addr, data, 2);
-            if (err == 0) {
+            bool ok = dxl.write((uint8_t)id, (uint16_t)addr, data, 2);
+            if (ok) {
               CMD_SERIAL.print("OK W2 "); CMD_SERIAL.print(id);
               CMD_SERIAL.print(" ["); CMD_SERIAL.print(addr);
               CMD_SERIAL.print("] = "); CMD_SERIAL.println(val);
             } else {
               CMD_SERIAL.print("ERR W2 "); CMD_SERIAL.print(id);
-              CMD_SERIAL.print(" code="); CMD_SERIAL.println(err);
+              CMD_SERIAL.println(" failed");
             }
           } else {
             CMD_SERIAL.println("ERR usage: W2 <id> <addr> <value>");
@@ -311,14 +311,14 @@ void processCommand(const char *cmd) {
               (uint8_t)((lval >> 16) & 0xFF),
               (uint8_t)((lval >> 24) & 0xFF)
             };
-            int8_t err = dxl.write((uint8_t)id, (uint16_t)addr, data, 4);
-            if (err == 0) {
+            bool ok = dxl.write((uint8_t)id, (uint16_t)addr, data, 4);
+            if (ok) {
               CMD_SERIAL.print("OK W4 "); CMD_SERIAL.print(id);
               CMD_SERIAL.print(" ["); CMD_SERIAL.print(addr);
               CMD_SERIAL.print("] = "); CMD_SERIAL.println(lval);
             } else {
               CMD_SERIAL.print("ERR W4 "); CMD_SERIAL.print(id);
-              CMD_SERIAL.print(" code="); CMD_SERIAL.println(err);
+              CMD_SERIAL.println(" failed");
             }
           } else {
             CMD_SERIAL.println("ERR usage: W4 <id> <addr> <value>");
@@ -329,14 +329,14 @@ void processCommand(const char *cmd) {
           if (sscanf(args, "%d %d %d", &id, &addr, &val) == 3) {
             if (!validID(id)) { CMD_SERIAL.println("ERR invalid ID"); return; }
             uint8_t data[1] = { (uint8_t)(val & 0xFF) };
-            int8_t err = dxl.write((uint8_t)id, (uint16_t)addr, data, 1);
-            if (err == 0) {
+            bool ok = dxl.write((uint8_t)id, (uint16_t)addr, data, 1);
+            if (ok) {
               CMD_SERIAL.print("OK W "); CMD_SERIAL.print(id);
               CMD_SERIAL.print(" ["); CMD_SERIAL.print(addr);
               CMD_SERIAL.print("] = "); CMD_SERIAL.println(val);
             } else {
               CMD_SERIAL.print("ERR W "); CMD_SERIAL.print(id);
-              CMD_SERIAL.print(" code="); CMD_SERIAL.println(err);
+              CMD_SERIAL.println(" failed");
             }
           } else {
             CMD_SERIAL.println("ERR usage: W <id> <addr> <value>");
