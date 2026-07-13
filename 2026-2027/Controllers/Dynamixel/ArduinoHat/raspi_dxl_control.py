@@ -39,7 +39,22 @@ except ImportError:
 # Configuration
 # ---------------------------------------------------------------------------
 
-UART_PORT = "/dev/serial0"
+import os
+
+# Try common Pi UART devices in order of preference
+_UART_CANDIDATES = [
+    "/dev/serial0",      # symlink created by raspi-config when UART is enabled
+    "/dev/ttyAMA0",      # hardware UART (if Bluetooth disabled)
+    "/dev/ttyS0",        # mini UART (always present on Pi 3/4/5)
+]
+
+def _find_uart():
+    for dev in _UART_CANDIDATES:
+        if os.path.exists(dev):
+            return dev
+    return _UART_CANDIDATES[-1]  # fallback to ttyS0, let it fail with a clear error
+
+UART_PORT = _find_uart()
 BAUD = 115200
 TIMEOUT = 2.0
 
