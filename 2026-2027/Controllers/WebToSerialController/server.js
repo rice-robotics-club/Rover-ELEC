@@ -182,19 +182,29 @@ io.on('connection', (socket) => {
     writeCommand(drillPort, drillPortPath, 'Drill', cmd, spd);
   });
 
-  // --- Arm servo commands (Dynamixel Hat protocol) ---
-  socket.on('arm-position', (data) => {
-    // data: { servoId: 1-4, degrees: 0-360 }
+  // --- Arm: initialise servos into velocity mode ---
+  socket.on('arm-init', (data) => {
+    // data: { servoId: 1-4 } or omit to init servos 1 & 2
+    const ids = data && data.servoId ? [parseInt(data.servoId)] : [1, 2];
+    ids.forEach(id => {
+      if (id < 1 || id > 4) return;
+      writeArmCommand(armPort, armPortPath, 'Arm', `T ${id} 1`);       // torque on
+      writeArmCommand(armPort, armPortPath, 'Arm', `MODE ${id} 1`);    // velocity mode
+    });
+  });
+
+  // --- Arm servo velocity commands (Dynamixel Hat, velocity mode) ---
+  socket.on('arm-velocity', (data) => {
+    // data: { servoId: 1-4, velocity: -1023..1023 }
     const id = parseInt(data.servoId);
     if (isNaN(id) || id < 1 || id > 4) {
       console.warn(`[Arm] Invalid servo ID: ${data.servoId}`);
       return;
     }
-    let deg = parseFloat(data.degrees);
-    if (isNaN(deg)) deg = 180;
-    deg = Math.max(0, Math.min(360, deg));
-    // Format as one decimal place so sscanf %f on Arduino parses cleanly
-    writeArmCommand(armPort, armPortPath, 'Arm', `GD ${id} ${deg.toFixed(1)}`);
+    let vel = parseInt(data.velocity);
+    if (isNaN(vel)) vel = 0;
+    vel = Math.max(-1023, Math.min(1023, vel));
+    writeArmCommand(armPort, armPortPath, 'Arm', `V ${id} ${vel}`);
   });
 
   socket.on('arm-torque', (data) => {
@@ -215,9 +225,9 @@ io.on('connection', (socket) => {
     writeCommand(movePort, movePortPath, 'Movement', 0, 0);
     writeCommand(drillPort, drillPortPath, 'Drill', 7, 0);
     writeCommand(drillPort, drillPortPath, 'Drill', 19, 0);
-    // Torque off arm servos (IDs 1-4)
+    // Stop arm servos: zero velocity + torque off (IDs 1-2)
     for (let id = 1; id <= 4; id++) {
-      writeArmCommand(armPort, armPortPath, 'Arm', `T ${id} 0`);
+      writeArmCommand(armPort, armPortPath, 'Arm', `V ${id} 0`);
     }
   });
 

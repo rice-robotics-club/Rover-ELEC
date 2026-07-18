@@ -4,7 +4,6 @@ const socket = io();
 // === State ===
 let currentSpeed = 30000;
 let servoTorque = { 1: true, 2: true }; // Track torque state
-let servoPos = { 1: 180, 2: 180 };      // Track current position
 
 // === DOM References ===
 const $speedSlider = document.getElementById('speed-slider');
@@ -52,14 +51,19 @@ function sendSample(direction) {
   addLogEntry(`Sample: ${direction} @ ${currentSpeed}`, 'system');
 }
 
-function sendArmPosition(servoId, degrees) {
-  socket.emit('arm-position', { servoId, degrees });
-  addLogEntry(`Arm: Servo ${servoId} → ${degrees}°`, 'system');
+function sendArmVelocity(servoId, velocity) {
+  socket.emit('arm-velocity', { servoId, velocity });
+  addLogEntry(`Arm: Servo ${servoId} vel ${velocity}`, 'system');
 }
 
 function sendArmTorque(servoId, enable) {
   socket.emit('arm-torque', { servoId, enable });
   addLogEntry(`Arm: Servo ${servoId} torque ${enable ? 'ON' : 'OFF'}`, 'system');
+}
+
+function initArm() {
+  socket.emit('arm-init', {});
+  addLogEntry('Arm: Init velocity mode (T 1, MODE 1) for servos 1 & 2', 'system');
 }
 
 // === Hold-to-move (mouse + touch) ===
@@ -107,27 +111,32 @@ document.getElementById('btn-stop').addEventListener('click', () => {
   document.querySelectorAll('.move-btn.pressed').forEach(b => b.classList.remove('pressed'));
 });
 
-// === Arm Servo Sliders (send on release to avoid flooding serial) ===
-function setupServoSlider(sliderId, valId, servoId) {
+// === Arm Init Button ===
+document.getElementById('btn-arm-init').addEventListener('click', () => initArm());
+
+// === Arm Velocity Sliders (spring-return: snap to 0 on release) ===
+function setupVelocitySlider(sliderId, valId, servoId) {
   const slider = document.getElementById(sliderId);
   const valSpan = document.getElementById(valId);
 
   slider.addEventListener('input', () => {
-    valSpan.textContent = slider.value + '°';
+    valSpan.textContent = slider.value;
+    // Send velocity continuously while dragging
+    sendArmVelocity(servoId, parseInt(slider.value));
   });
 
-  // Send on mouse/touch release
-  const send = () => {
-    const deg = parseInt(slider.value);
-    servoPos[servoId] = deg;
-    sendArmPosition(servoId, deg);
+  // Spring-return to 0 on release
+  const snapToZero = () => {
+    slider.value = 0;
+    valSpan.textContent = '0';
+    sendArmVelocity(servoId, 0);
   };
-  slider.addEventListener('change', send);      // mouse release
-  slider.addEventListener('touchend', send);     // touch release
+  slider.addEventListener('change', snapToZero);     // mouse release
+  slider.addEventListener('touchend', snapToZero);    // touch release
 }
 
-setupServoSlider('servo1-slider', 'servo1-val', 1);
-setupServoSlider('servo2-slider', 'servo2-val', 2);
+setupVelocitySlider('servo1-slider', 'servo1-val', 1);
+setupVelocitySlider('servo2-slider', 'servo2-val', 2);
 
 // === Arm Torque Toggles ===
 function setupTorqueButton(btnId, servoId) {
@@ -142,31 +151,16 @@ function setupTorqueButton(btnId, servoId) {
 setupTorqueButton('btn-servo1-torque', 1);
 setupTorqueButton('btn-servo2-torque', 2);
 
-// === Arm Home Buttons ===
-document.querySelectorAll('.home-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const servoId = parseInt(btn.dataset.servo);
-    const deg = parseInt(btn.dataset.deg);
-    const slider = document.getElementById('servo' + servoId + '-slider');
-    const valSpan = document.getElementById('servo' + servoId + '-val');
-    slider.value = deg;
-    valSpan.textContent = deg + '°';
-    servoPos[servoId] = deg;
-    sendArmPosition(servoId, deg);
-  });
-});
-
-// === Arm Preset Buttons ===
+// === Arm Velocity Preset Buttons ===
 document.querySelectorAll('.preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    const s1 = parseInt(btn.dataset.s1);
-    const s2 = parseInt(btn.dataset.s2);
-    [ [1, s1, 'servo1-slider', 'servo1-val'],
-      [2, s2, 'servo2-slider', 'servo2-val'] ].forEach(([id, deg, sliderId, valId]) => {
-      document.getElementById(sliderId).value = deg;
-      document.getElementById(valId).textContent = deg + '°';
-      servoPos[id] = deg;
-      sendArmPosition(id, deg);
+    const v1 = parseInt(btn.dataset.v1);
+    const v2 = parseInt(btn.dataset.v2);
+    [ [1, v1, 'servo1-slider', 'servo1-val'],
+      [2, v2, 'servo2-slider', 'servo2-val'] ].forEach(([id, vel, sliderId, valId]) => {
+      document.getElementById(sliderId).value = vel;
+      document.getElementById(valId).textContent = vel;
+      sendArmVelocity(id, vel);
     });
   });
 });
@@ -249,29 +243,15 @@ window.addEventListener('keydown', (e) => {
     case 'v': case 'V':
       e.preventDefault(); sendSample('stop'); break;
     case '1':
-      e.preventDefault();
-      servoPos[1] = Math.max(0, servoPos[1] - 10);
-      document.getElementById('servo1-slider').value = servoPos[1];
-      document.getElementById('servo1-val').textContent = servoPos[1] + '°';
-      sendArmPosition(1, servoPos[1]); break;
+      e.preventDefault(); sendArmVelocity(1, -200); break;
     case '2':
-      e.preventDefault();
-      servoPos[1] = Math.min(360, servoPos[1] + 10);
-      document.getElementById('servo1-slider').value = servoPos[1];
-      document.getElementById('servo1-val').textContent = servoPos[1] + '°';
-      sendArmPosition(1, servoPos[1]); break;
+      e.preventDefault(); sendArmVelocity(1, 200); break;
     case '3':
-      e.preventDefault();
-      servoPos[2] = Math.max(0, servoPos[2] - 10);
-      document.getElementById('servo2-slider').value = servoPos[2];
-      document.getElementById('servo2-val').textContent = servoPos[2] + '°';
-      sendArmPosition(2, servoPos[2]); break;
+      e.preventDefault(); sendArmVelocity(2, -200); break;
     case '4':
-      e.preventDefault();
-      servoPos[2] = Math.min(360, servoPos[2] + 10);
-      document.getElementById('servo2-slider').value = servoPos[2];
-      document.getElementById('servo2-val').textContent = servoPos[2] + '°';
-      sendArmPosition(2, servoPos[2]); break;
+      e.preventDefault(); sendArmVelocity(2, 200); break;
+    case 'i': case 'I':
+      e.preventDefault(); initArm(); break;
   }
 });
 

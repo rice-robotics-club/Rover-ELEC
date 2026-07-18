@@ -66,31 +66,31 @@
         </section>
       </div>
 
-      <!-- Column 3: Arm Servos -->
+      <!-- Column 3: Arm Servos (velocity mode) -->
       <section id="arm-section" class="control-card">
         <h2>Arm Servos</h2>
         <div id="arm-controls">
+          <button id="btn-arm-init" class="init-btn">Init Velocity Mode</button>
           <div class="servo-row">
-            <label>Servo 1 <span id="servo1-val">180°</span></label>
-            <input type="range" id="servo1-slider" min="0" max="360" value="180" step="1">
+            <label>Servo 1 <span id="servo1-val">0</span></label>
+            <input type="range" id="servo1-slider" min="-500" max="500" value="0" step="10">
             <div class="servo-btns">
               <button id="btn-servo1-torque" class="torque-btn on" data-servo="1">Torque</button>
-              <button id="btn-servo1-home" class="home-btn" data-servo="1" data-deg="180">⌂</button>
             </div>
           </div>
           <div class="servo-row">
-            <label>Servo 2 <span id="servo2-val">180°</span></label>
-            <input type="range" id="servo2-slider" min="0" max="360" value="180" step="1">
+            <label>Servo 2 <span id="servo2-val">0</span></label>
+            <input type="range" id="servo2-slider" min="-500" max="500" value="0" step="10">
             <div class="servo-btns">
               <button id="btn-servo2-torque" class="torque-btn on" data-servo="2">Torque</button>
-              <button id="btn-servo2-home" class="home-btn" data-servo="2" data-deg="180">⌂</button>
             </div>
           </div>
           <div class="arm-presets">
-            <button class="preset-btn" data-s1="0" data-s2="0">0° / 0°</button>
-            <button class="preset-btn" data-s1="90" data-s2="90">90° / 90°</button>
-            <button class="preset-btn" data-s1="180" data-s2="180">Home</button>
-            <button class="preset-btn" data-s1="270" data-s2="270">270° / 270°</button>
+            <button class="preset-btn" data-v1="-200" data-v2="0">S1 ←</button>
+            <button class="preset-btn" data-v1="200" data-v2="0">S1 →</button>
+            <button class="preset-btn" data-v1="0" data-v2="-200">S2 ←</button>
+            <button class="preset-btn" data-v1="0" data-v2="200">S2 →</button>
+            <button class="preset-btn stop" data-v1="0" data-v2="0">Stop All</button>
           </div>
         </div>
       </section>
@@ -154,8 +154,9 @@
           <span><kbd>E</kbd></span><span>Drill Rev</span>
           <span><kbd>R</kbd></span><span>Sample Ext</span>
           <span><kbd>F</kbd></span><span>Sample Ret</span>
-          <span><kbd>1</kbd><kbd>2</kbd></span><span>Servo1 ±10°</span>
-          <span><kbd>3</kbd><kbd>4</kbd></span><span>Servo2 ±10°</span>
+          <span><kbd>1</kbd><kbd>2</kbd></span><span>S1 ±200 vel</span>
+          <span><kbd>3</kbd><kbd>4</kbd></span><span>S2 ±200 vel</span>
+          <span><kbd>I</kbd></span><span>Arm Init</span>
         </div>
       </details>
     </section>
