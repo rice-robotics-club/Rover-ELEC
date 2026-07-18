@@ -11,7 +11,7 @@ const io = new Server(server);
 // --- Configuration ---
 const DEFAULT_MOVE_PORT = '/dev/ttyUSB0';
 const DEFAULT_DRILL_PORT = '/dev/ttyUSB1';
-const DEFAULT_ARM_PORT = '/dev/ttyUSB2';
+const DEFAULT_ARM_PORT = '/dev/ttyAMA0';
 const DEFAULT_MOVE_BAUD = 115200;
 const DEFAULT_DRILL_BAUD = 115200;
 const DEFAULT_ARM_BAUD = 57600;   // Arduino Hat uses 57600 baud
@@ -99,6 +99,11 @@ function openAllPorts() {
 
 openAllPorts();
 
+function clampSpeed(val) {
+  const s = parseInt(val);
+  return Math.max(0, Math.min(65535, isNaN(s) ? 30000 : s));
+}
+
 // --- Helper: write comma-separated movement command ---
 function writeCommand(port, portPath, label, command, speed) {
   if (!port || !port.isOpen) {
@@ -153,13 +158,13 @@ io.on('connection', (socket) => {
   // --- Movement commands (sent to movement serial port) ---
   socket.on('move', (data) => {
     const cmd = parseInt(data.command);
-    const spd = Math.max(0, Math.min(65535, parseInt(data.speed) || 30000));
+    const spd = clampSpeed(data.speed);
     writeCommand(movePort, movePortPath, 'Movement', cmd, spd);
   });
 
   // --- Drill commands (motor0, sent to drill serial port) ---
   socket.on('drill', (data) => {
-    const spd = Math.max(0, Math.min(65535, parseInt(data.speed) || 30000));
+    const spd = clampSpeed(data.speed);
     let cmd;
     if (data.direction === 'forward') cmd = 5;
     else if (data.direction === 'reverse') cmd = 6;
@@ -169,7 +174,7 @@ io.on('connection', (socket) => {
 
   // --- Sample collection commands (motor4, sent to drill serial port) ---
   socket.on('sample', (data) => {
-    const spd = Math.max(0, Math.min(65535, parseInt(data.speed) || 30000));
+    const spd = clampSpeed(data.speed);
     let cmd;
     if (data.direction === 'extend') cmd = 17;
     else if (data.direction === 'retract') cmd = 18;
@@ -181,8 +186,15 @@ io.on('connection', (socket) => {
   socket.on('arm-position', (data) => {
     // data: { servoId: 1-4, degrees: 0-360 }
     const id = parseInt(data.servoId);
-    const deg = Math.max(0, Math.min(360, parseFloat(data.degrees) || 180));
-    writeArmCommand(armPort, armPortPath, 'Arm', `GD ${id} ${deg}`);
+    if (isNaN(id) || id < 1 || id > 4) {
+      console.warn(`[Arm] Invalid servo ID: ${data.servoId}`);
+      return;
+    }
+    let deg = parseFloat(data.degrees);
+    if (isNaN(deg)) deg = 180;
+    deg = Math.max(0, Math.min(360, deg));
+    // Format as one decimal place so sscanf %f on Arduino parses cleanly
+    writeArmCommand(armPort, armPortPath, 'Arm', `GD ${id} ${deg.toFixed(1)}`);
   });
 
   socket.on('arm-torque', (data) => {
