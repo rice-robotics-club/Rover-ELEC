@@ -11,17 +11,22 @@ const io = new Server(server);
 // --- Configuration ---
 const DEFAULT_MOVE_PORT = '/dev/ttyUSB0';
 const DEFAULT_DRILL_PORT = '/dev/ttyUSB1';
+const DEFAULT_ARM_PORT = '/dev/ttyUSB2';
 const DEFAULT_MOVE_BAUD = 115200;
 const DEFAULT_DRILL_BAUD = 115200;
-const PORT = 3000;
+const DEFAULT_ARM_BAUD = 57600;   // Arduino Hat uses 57600 baud
+const HTTP_PORT = 3000;
 
 // --- Serial Port State ---
 let movePort = null;
 let drillPort = null;
+let armPort = null;
 let movePortPath = DEFAULT_MOVE_PORT;
 let drillPortPath = DEFAULT_DRILL_PORT;
+let armPortPath = DEFAULT_ARM_PORT;
 let moveBaudRate = DEFAULT_MOVE_BAUD;
 let drillBaudRate = DEFAULT_DRILL_BAUD;
+let armBaudRate = DEFAULT_ARM_BAUD;
 
 // --- Serve static files from public/ ---
 app.use(express.static('public'));
@@ -50,8 +55,9 @@ function openSerialPort(portPath, baudRate, label) {
       port: label,
       timestamp,
       data: trimmed,
-      isAck: trimmed.startsWith('ACK:'),
-      isError: trimmed.includes('STALLED') || trimmed.includes('ERROR')
+      // Movement/Drill use ACK: prefix; Arm (Dynamixel Hat) uses OK/ERR
+      isAck: trimmed.startsWith('ACK:') || trimmed.startsWith('OK'),
+      isError: trimmed.includes('STALLED') || trimmed.includes('ERROR') || trimmed.startsWith('ERR')
     });
   });
 
@@ -81,17 +87,19 @@ function closeSerialPort(port, label, path) {
   }
 }
 
-// --- Open both serial ports ---
+// --- Open all serial ports ---
 function openAllPorts() {
   closeSerialPort(movePort, 'Movement', movePortPath);
   closeSerialPort(drillPort, 'Drill', drillPortPath);
+  closeSerialPort(armPort, 'Arm', armPortPath);
   movePort = openSerialPort(movePortPath, moveBaudRate, 'Movement');
   drillPort = openSerialPort(drillPortPath, drillBaudRate, 'Drill');
+  armPort = openSerialPort(armPortPath, armBaudRate, 'Arm');
 }
 
 openAllPorts();
 
-// --- Helper: write command to serial port ---
+// --- Helper: write comma-separated movement command ---
 function writeCommand(port, portPath, label, command, speed) {
   if (!port || !port.isOpen) {
     console.warn(`[${label}] Cannot write: port ${portPath} not open`);
@@ -100,9 +108,21 @@ function writeCommand(port, portPath, label, command, speed) {
   const msg = `${command},${speed}\n`;
   console.log(`[${label}] TX: ${msg.trim()}`);
   port.write(msg, (err) => {
-    if (err) {
-      console.error(`[${label}] Write error: ${err.message}`);
-    }
+    if (err) console.error(`[${label}] Write error: ${err.message}`);
+  });
+  return true;
+}
+
+// --- Helper: write text command to arm port (space-delimited protocol) ---
+function writeArmCommand(port, portPath, label, command) {
+  if (!port || !port.isOpen) {
+    console.warn(`[${label}] Cannot write: port ${portPath} not open`);
+    return false;
+  }
+  const msg = command + '\n';
+  console.log(`[${label}] TX: ${msg.trim()}`);
+  port.write(msg, (err) => {
+    if (err) console.error(`[${label}] Write error: ${err.message}`);
   });
   return true;
 }
@@ -112,117 +132,109 @@ io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
 
   // Send current port status on connect
-  socket.emit('port-status', {
-    label: 'Movement',
-    connected: movePort && movePort.isOpen,
-    path: movePortPath,
-    error: null
-  });
-  socket.emit('port-status', {
-    label: 'Drill',
-    connected: drillPort && drillPort.isOpen,
-    path: drillPortPath,
-    error: null
+  const ports = [
+    { label: 'Movement', port: movePort, path: movePortPath },
+    { label: 'Drill', port: drillPort, path: drillPortPath },
+    { label: 'Arm', port: armPort, path: armPortPath },
+  ];
+  ports.forEach(p => {
+    socket.emit('port-status', {
+      label: p.label,
+      connected: p.port && p.port.isOpen,
+      path: p.path,
+      error: null
+    });
   });
   socket.emit('config', {
-    movePort: movePortPath,
-    drillPort: drillPortPath,
-    moveBaud: moveBaudRate,
-    drillBaud: drillBaudRate
+    movePort: movePortPath, drillPort: drillPortPath, armPort: armPortPath,
+    moveBaud: moveBaudRate, drillBaud: drillBaudRate, armBaud: armBaudRate
   });
 
   // --- Movement commands (sent to movement serial port) ---
   socket.on('move', (data) => {
-    // data: { command: 0-4, speed: 0-65535 }
     const cmd = parseInt(data.command);
     const spd = Math.max(0, Math.min(65535, parseInt(data.speed) || 30000));
     writeCommand(movePort, movePortPath, 'Movement', cmd, spd);
   });
 
-  // --- Individual motor commands (for drivetrain motors 1-4) ---
-  socket.on('motor', (data) => {
-    // data: { motor: 1-4, direction: 'forward'|'backward'|'stop', speed: 0-65535 }
-    const motor = parseInt(data.motor);
-    const spd = Math.max(0, Math.min(65535, parseInt(data.speed) || 30000));
-    let cmd;
-    if (data.direction === 'forward') {
-      cmd = 6 + motor * 2;   // 8, 10, 12, 14 for motors 1-4 forward
-    } else if (data.direction === 'backward') {
-      cmd = 7 + motor * 2;   // 9, 11, 13, 15 for motors 1-4 backward
-    } else {
-      cmd = 8 + motor * 2;   // 10, 12, 14, 16 for motors 1-4 stop
-    }
-    writeCommand(movePort, movePortPath, 'Movement', cmd, spd);
-  });
-
   // --- Drill commands (motor0, sent to drill serial port) ---
   socket.on('drill', (data) => {
-    // data: { direction: 'forward'|'reverse'|'stop', speed: 0-65535 }
     const spd = Math.max(0, Math.min(65535, parseInt(data.speed) || 30000));
     let cmd;
-    if (data.direction === 'forward') {
-      cmd = 5;  // motor0 forward
-    } else if (data.direction === 'reverse') {
-      cmd = 6;  // motor0 backward
-    } else {
-      cmd = 7;  // motor0 stop
-    }
+    if (data.direction === 'forward') cmd = 5;
+    else if (data.direction === 'reverse') cmd = 6;
+    else cmd = 7;
     writeCommand(drillPort, drillPortPath, 'Drill', cmd, spd);
   });
 
   // --- Sample collection commands (motor4, sent to drill serial port) ---
   socket.on('sample', (data) => {
-    // data: { direction: 'extend'|'retract'|'stop', speed: 0-65535 }
     const spd = Math.max(0, Math.min(65535, parseInt(data.speed) || 30000));
     let cmd;
-    if (data.direction === 'extend') {
-      cmd = 17; // motor4 forward
-    } else if (data.direction === 'retract') {
-      cmd = 18; // motor4 backward
-    } else {
-      cmd = 19; // motor4 stop
-    }
+    if (data.direction === 'extend') cmd = 17;
+    else if (data.direction === 'retract') cmd = 18;
+    else cmd = 19;
     writeCommand(drillPort, drillPortPath, 'Drill', cmd, spd);
   });
 
-  // --- Emergency stop (stops everything on both ports) ---
+  // --- Arm servo commands (Dynamixel Hat protocol) ---
+  socket.on('arm-position', (data) => {
+    // data: { servoId: 1-4, degrees: 0-360 }
+    const id = parseInt(data.servoId);
+    const deg = Math.max(0, Math.min(360, parseFloat(data.degrees) || 180));
+    writeArmCommand(armPort, armPortPath, 'Arm', `GD ${id} ${deg}`);
+  });
+
+  socket.on('arm-torque', (data) => {
+    // data: { servoId: 1-4, enable: true/false }
+    const id = parseInt(data.servoId);
+    const val = data.enable ? '1' : '0';
+    writeArmCommand(armPort, armPortPath, 'Arm', `T ${id} ${val}`);
+  });
+
+  socket.on('arm-raw', (data) => {
+    // data: { command: "P 1" or "SD 2" etc. }
+    writeArmCommand(armPort, armPortPath, 'Arm', data.command);
+  });
+
+  // --- Emergency stop (stops everything on all three ports) ---
   socket.on('emergency-stop', () => {
     console.log('[Emergency] EMERGENCY STOP triggered!');
     writeCommand(movePort, movePortPath, 'Movement', 0, 0);
     writeCommand(drillPort, drillPortPath, 'Drill', 7, 0);
-    writeCommand(drillPort, drillPortPath, 'Drill-Sample', 19, 0);
+    writeCommand(drillPort, drillPortPath, 'Drill', 19, 0);
+    // Torque off arm servos (IDs 1-4)
+    for (let id = 1; id <= 4; id++) {
+      writeArmCommand(armPort, armPortPath, 'Arm', `T ${id} 0`);
+    }
   });
 
   // --- Reconfigure serial ports ---
   socket.on('set-config', (config) => {
     if (config.movePort) movePortPath = config.movePort;
     if (config.drillPort) drillPortPath = config.drillPort;
+    if (config.armPort) armPortPath = config.armPort;
     if (config.moveBaud) moveBaudRate = parseInt(config.moveBaud);
     if (config.drillBaud) drillBaudRate = parseInt(config.drillBaud);
-    console.log(`[Config] Updated. Reconnecting ports...`);
+    if (config.armBaud) armBaudRate = parseInt(config.armBaud);
+    console.log('[Config] Updated. Reconnecting ports...');
     openAllPorts();
     socket.emit('config', {
-      movePort: movePortPath,
-      drillPort: drillPortPath,
-      moveBaud: moveBaudRate,
-      drillBaud: drillBaudRate
+      movePort: movePortPath, drillPort: drillPortPath, armPort: armPortPath,
+      moveBaud: moveBaudRate, drillBaud: drillBaudRate, armBaud: armBaudRate
     });
   });
 
   // --- Request port refresh ---
   socket.on('refresh-ports', () => {
     openAllPorts();
-    socket.emit('port-status', {
-      label: 'Movement',
-      connected: movePort && movePort.isOpen,
-      path: movePortPath,
-      error: null
-    });
-    socket.emit('port-status', {
-      label: 'Drill',
-      connected: drillPort && drillPort.isOpen,
-      path: drillPortPath,
-      error: null
+    ports.forEach(p => {
+      socket.emit('port-status', {
+        label: p.label,
+        connected: p.port && p.port.isOpen,
+        path: p.path,
+        error: null
+      });
     });
   });
 
@@ -232,10 +244,11 @@ io.on('connection', (socket) => {
 });
 
 // --- Start server ---
-server.listen(PORT, () => {
-  console.log(`=== Rover Web Controller ===`);
-  console.log(`Server running at http://localhost:${PORT}`);
-  console.log(`Movement serial port: ${movePortPath} @ ${moveBaudRate} baud`);
-  console.log(`Drill serial port:    ${drillPortPath} @ ${drillBaudRate} baud`);
-  console.log(`=============================`);
+server.listen(HTTP_PORT, () => {
+  console.log('=== Rover Web Controller ===');
+  console.log(`Server running at http://localhost:${HTTP_PORT}`);
+  console.log(`Movement port: ${movePortPath} @ ${moveBaudRate} baud`);
+  console.log(`Drill port:    ${drillPortPath} @ ${drillBaudRate} baud`);
+  console.log(`Arm port:      ${armPortPath} @ ${armBaudRate} baud`);
+  console.log('=============================');
 });

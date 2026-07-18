@@ -10,51 +10,88 @@
   <div id="app">
     <!-- Header -->
     <header>
-      <h1>Rover Control Panel</h1>
+      <h1>Rover Control</h1>
       <div id="connection-indicators">
-        <span id="move-status" class="status-badge disconnected">MOV: Disconnected</span>
-        <span id="drill-status" class="status-badge disconnected">DRL: Disconnected</span>
-        <span id="ws-status" class="status-badge disconnected">WS: Connecting...</span>
+        <span id="move-status" class="status-badge disconnected">MOV</span>
+        <span id="drill-status" class="status-badge disconnected">DRL</span>
+        <span id="arm-status" class="status-badge disconnected">ARM</span>
+        <span id="ws-status" class="status-badge disconnected">WS</span>
       </div>
     </header>
 
     <!-- Speed Control -->
     <section id="speed-section">
-      <label for="speed-slider">Speed: <span id="speed-value">30000</span></label>
+      <label>Speed: <span id="speed-value">30000</span></label>
       <input type="range" id="speed-slider" min="0" max="65535" value="30000" step="1000">
     </section>
 
-    <!-- Main Controls Grid -->
+    <!-- Main Controls Grid: 3 columns -->
     <div id="controls-grid">
-      <!-- Movement D-Pad -->
-      <section id="movement-section">
+
+      <!-- Column 1: Movement D-Pad -->
+      <section id="movement-section" class="control-card">
         <h2>Movement</h2>
         <div id="dpad">
-          <button id="btn-forward" class="move-btn" data-command="1">▲<br>Forward</button>
-          <button id="btn-left" class="move-btn" data-command="4">◀<br>Left</button>
+          <button id="btn-forward" class="move-btn" data-command="1">▲</button>
+          <button id="btn-left" class="move-btn" data-command="4">◀</button>
           <button id="btn-stop" class="stop-btn" data-command="0">STOP</button>
-          <button id="btn-right" class="move-btn" data-command="3">▶<br>Right</button>
-          <button id="btn-backward" class="move-btn" data-command="2">▼<br>Back</button>
+          <button id="btn-right" class="move-btn" data-command="3">▶</button>
+          <button id="btn-backward" class="move-btn" data-command="2">▼</button>
+        </div>
+        <div class="dpad-labels">
+          <span></span><span>Fwd</span><span></span>
+          <span>Left</span><span></span><span>Right</span>
+          <span></span><span>Back</span><span></span>
         </div>
       </section>
 
-      <!-- Drill Controls -->
-      <section id="drill-section">
-        <h2>Drill (Motor 0)</h2>
-        <div class="motor-controls">
-          <button id="btn-drill-fwd" class="drill-btn forward-btn" data-command="5">↻ Drill Forward</button>
-          <button id="btn-drill-rev" class="drill-btn reverse-btn" data-command="6">↺ Drill Reverse</button>
-          <button id="btn-drill-stop" class="drill-btn stop-sm-btn" data-command="7">■ Drill Stop</button>
-        </div>
-      </section>
+      <!-- Column 2: Drill + Sample -->
+      <div id="tools-column">
+        <section id="drill-section" class="control-card">
+          <h2>Drill</h2>
+          <div class="motor-controls">
+            <button id="btn-drill-fwd" class="tool-btn forward-btn">↻ Forward</button>
+            <button id="btn-drill-rev" class="tool-btn reverse-btn">↺ Reverse</button>
+            <button id="btn-drill-stop" class="tool-btn stop-sm-btn">■ Stop</button>
+          </div>
+        </section>
 
-      <!-- Sample Collection Controls -->
-      <section id="sample-section">
-        <h2>Sample Collection (Motor 4)</h2>
-        <div class="motor-controls">
-          <button id="btn-sample-extend" class="sample-btn forward-btn" data-command="17">↓ Extend</button>
-          <button id="btn-sample-retract" class="sample-btn reverse-btn" data-command="18">↑ Retract</button>
-          <button id="btn-sample-stop" class="sample-btn stop-sm-btn" data-command="19">■ Stop</button>
+        <section id="sample-section" class="control-card">
+          <h2>Sample</h2>
+          <div class="motor-controls">
+            <button id="btn-sample-extend" class="tool-btn forward-btn">↓ Extend</button>
+            <button id="btn-sample-retract" class="tool-btn reverse-btn">↑ Retract</button>
+            <button id="btn-sample-stop" class="tool-btn stop-sm-btn">■ Stop</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Column 3: Arm Servos -->
+      <section id="arm-section" class="control-card">
+        <h2>Arm Servos</h2>
+        <div id="arm-controls">
+          <div class="servo-row">
+            <label>Servo 1 <span id="servo1-val">180°</span></label>
+            <input type="range" id="servo1-slider" min="0" max="360" value="180" step="1">
+            <div class="servo-btns">
+              <button id="btn-servo1-torque" class="torque-btn on" data-servo="1">Torque</button>
+              <button id="btn-servo1-home" class="home-btn" data-servo="1" data-deg="180">⌂</button>
+            </div>
+          </div>
+          <div class="servo-row">
+            <label>Servo 2 <span id="servo2-val">180°</span></label>
+            <input type="range" id="servo2-slider" min="0" max="360" value="180" step="1">
+            <div class="servo-btns">
+              <button id="btn-servo2-torque" class="torque-btn on" data-servo="2">Torque</button>
+              <button id="btn-servo2-home" class="home-btn" data-servo="2" data-deg="180">⌂</button>
+            </div>
+          </div>
+          <div class="arm-presets">
+            <button class="preset-btn" data-s1="0" data-s2="0">0° / 0°</button>
+            <button class="preset-btn" data-s1="90" data-s2="90">90° / 90°</button>
+            <button class="preset-btn" data-s1="180" data-s2="180">Home</button>
+            <button class="preset-btn" data-s1="270" data-s2="270">270° / 270°</button>
+          </div>
         </div>
       </section>
     </div>
@@ -67,7 +104,7 @@
     <!-- Debug Log -->
     <section id="debug-section">
       <div id="debug-header">
-        <h2>Debug Log</h2>
+        <h2>Log</h2>
         <button id="btn-clear-log">Clear</button>
       </div>
       <div id="debug-log">
@@ -75,41 +112,50 @@
       </div>
     </section>
 
-    <!-- Settings Panel -->
+    <!-- Settings Panel (collapsible) -->
     <section id="settings-section">
       <button id="btn-toggle-settings">⚙ Settings</button>
       <div id="settings-panel" class="hidden">
-        <div class="settings-group">
-          <h3>Movement Port</h3>
-          <label>Path: <input type="text" id="move-port-path" value="/dev/ttyUSB0"></label>
-          <label>Baud: <input type="number" id="move-port-baud" value="115200"></label>
+        <div class="settings-row">
+          <div class="settings-group">
+            <h3>Movement</h3>
+            <label>Path <input type="text" id="move-port-path" value="/dev/ttyUSB0"></label>
+            <label>Baud <input type="number" id="move-port-baud" value="115200"></label>
+          </div>
+          <div class="settings-group">
+            <h3>Drill/Sample</h3>
+            <label>Path <input type="text" id="drill-port-path" value="/dev/ttyUSB1"></label>
+            <label>Baud <input type="number" id="drill-port-baud" value="115200"></label>
+          </div>
+          <div class="settings-group">
+            <h3>Arm (DXL Hat)</h3>
+            <label>Path <input type="text" id="arm-port-path" value="/dev/ttyUSB2"></label>
+            <label>Baud <input type="number" id="arm-port-baud" value="57600"></label>
+          </div>
         </div>
-        <div class="settings-group">
-          <h3>Drill / Sample Port</h3>
-          <label>Path: <input type="text" id="drill-port-path" value="/dev/ttyUSB1"></label>
-          <label>Baud: <input type="number" id="drill-port-baud" value="115200"></label>
+        <div class="settings-actions">
+          <button id="btn-apply-settings">Apply &amp; Reconnect</button>
+          <button id="btn-refresh-ports">Refresh</button>
         </div>
-        <button id="btn-apply-settings">Apply & Reconnect</button>
-        <button id="btn-refresh-ports">Refresh Ports</button>
       </div>
     </section>
 
     <!-- Keyboard Help -->
     <section id="help-section">
       <details>
-        <summary>⌨ Keyboard Shortcuts</summary>
+        <summary>⌨ Shortcuts</summary>
         <div class="help-grid">
-          <span><kbd>↑</kbd> / <kbd>W</kbd></span><span>Forward</span>
-          <span><kbd>↓</kbd> / <kbd>S</kbd></span><span>Backward</span>
-          <span><kbd>←</kbd> / <kbd>A</kbd></span><span>Left</span>
-          <span><kbd>→</kbd> / <kbd>D</kbd></span><span>Right</span>
-          <span><kbd>Space</kbd> / <kbd>Esc</kbd></span><span>EMERGENCY STOP</span>
-          <span><kbd>Q</kbd></span><span>Drill Forward</span>
-          <span><kbd>E</kbd></span><span>Drill Reverse</span>
-          <span><kbd>Z</kbd></span><span>Drill Stop</span>
-          <span><kbd>R</kbd></span><span>Sample Extend</span>
-          <span><kbd>F</kbd></span><span>Sample Retract</span>
-          <span><kbd>V</kbd></span><span>Sample Stop</span>
+          <span><kbd>↑</kbd><kbd>W</kbd></span><span>Fwd</span>
+          <span><kbd>↓</kbd><kbd>S</kbd></span><span>Back</span>
+          <span><kbd>←</kbd><kbd>A</kbd></span><span>Left</span>
+          <span><kbd>→</kbd><kbd>D</kbd></span><span>Right</span>
+          <span><kbd>Spc</kbd><kbd>Esc</kbd></span><span>E-STOP</span>
+          <span><kbd>Q</kbd></span><span>Drill Fwd</span>
+          <span><kbd>E</kbd></span><span>Drill Rev</span>
+          <span><kbd>R</kbd></span><span>Sample Ext</span>
+          <span><kbd>F</kbd></span><span>Sample Ret</span>
+          <span><kbd>1</kbd><kbd>2</kbd></span><span>Servo1 ±10°</span>
+          <span><kbd>3</kbd><kbd>4</kbd></span><span>Servo2 ±10°</span>
         </div>
       </details>
     </section>
