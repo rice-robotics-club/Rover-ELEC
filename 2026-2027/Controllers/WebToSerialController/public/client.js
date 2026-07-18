@@ -3,7 +3,6 @@ const socket = io();
 
 // === State ===
 let currentSpeed = 30000;
-let servoTorque = { 1: true, 2: true }; // Track torque state
 
 // === DOM References ===
 const $speedSlider = document.getElementById('speed-slider');
@@ -51,19 +50,16 @@ function sendSample(direction) {
   addLogEntry(`Sample: ${direction} @ ${currentSpeed}`, 'system');
 }
 
+const ARM_VELOCITY = 200;  // default velocity magnitude for arm servos
+
 function sendArmVelocity(servoId, velocity) {
   socket.emit('arm-velocity', { servoId, velocity });
   addLogEntry(`Arm: Servo ${servoId} vel ${velocity}`, 'system');
 }
 
-function sendArmTorque(servoId, enable) {
-  socket.emit('arm-torque', { servoId, enable });
-  addLogEntry(`Arm: Servo ${servoId} torque ${enable ? 'ON' : 'OFF'}`, 'system');
-}
-
 function initArm() {
   socket.emit('arm-init', {});
-  addLogEntry('Arm: Init velocity mode (T 1, MODE 1) for servos 1 & 2', 'system');
+  addLogEntry('Arm: Init velocity mode for servos 1 & 2', 'system');
 }
 
 // === Hold-to-move (mouse + touch) ===
@@ -114,56 +110,15 @@ document.getElementById('btn-stop').addEventListener('click', () => {
 // === Arm Init Button ===
 document.getElementById('btn-arm-init').addEventListener('click', () => initArm());
 
-// === Arm Velocity Sliders (spring-return: snap to 0 on release) ===
-function setupVelocitySlider(sliderId, valId, servoId) {
-  const slider = document.getElementById(sliderId);
-  const valSpan = document.getElementById(valId);
+// Servo 1 buttons
+document.getElementById('btn-servo1-fwd').addEventListener('click', () => sendArmVelocity(1, ARM_VELOCITY));
+document.getElementById('btn-servo1-rev').addEventListener('click', () => sendArmVelocity(1, -ARM_VELOCITY));
+document.getElementById('btn-servo1-stop').addEventListener('click', () => sendArmVelocity(1, 0));
 
-  slider.addEventListener('input', () => {
-    valSpan.textContent = slider.value;
-    // Send velocity continuously while dragging
-    sendArmVelocity(servoId, parseInt(slider.value));
-  });
-
-  // Spring-return to 0 on release
-  const snapToZero = () => {
-    slider.value = 0;
-    valSpan.textContent = '0';
-    sendArmVelocity(servoId, 0);
-  };
-  slider.addEventListener('change', snapToZero);     // mouse release
-  slider.addEventListener('touchend', snapToZero);    // touch release
-}
-
-setupVelocitySlider('servo1-slider', 'servo1-val', 1);
-setupVelocitySlider('servo2-slider', 'servo2-val', 2);
-
-// === Arm Torque Toggles ===
-function setupTorqueButton(btnId, servoId) {
-  const btn = document.getElementById(btnId);
-  btn.addEventListener('click', () => {
-    servoTorque[servoId] = !servoTorque[servoId];
-    sendArmTorque(servoId, servoTorque[servoId]);
-    btn.textContent = servoTorque[servoId] ? 'Torque' : 'Off';
-    btn.className = 'torque-btn ' + (servoTorque[servoId] ? 'on' : 'off');
-  });
-}
-setupTorqueButton('btn-servo1-torque', 1);
-setupTorqueButton('btn-servo2-torque', 2);
-
-// === Arm Velocity Preset Buttons ===
-document.querySelectorAll('.preset-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const v1 = parseInt(btn.dataset.v1);
-    const v2 = parseInt(btn.dataset.v2);
-    [ [1, v1, 'servo1-slider', 'servo1-val'],
-      [2, v2, 'servo2-slider', 'servo2-val'] ].forEach(([id, vel, sliderId, valId]) => {
-      document.getElementById(sliderId).value = vel;
-      document.getElementById(valId).textContent = vel;
-      sendArmVelocity(id, vel);
-    });
-  });
-});
+// Servo 2 buttons
+document.getElementById('btn-servo2-fwd').addEventListener('click', () => sendArmVelocity(2, ARM_VELOCITY));
+document.getElementById('btn-servo2-rev').addEventListener('click', () => sendArmVelocity(2, -ARM_VELOCITY));
+document.getElementById('btn-servo2-stop').addEventListener('click', () => sendArmVelocity(2, 0));
 
 // === Emergency Stop ===
 document.getElementById('btn-emergency').addEventListener('click', () => {
@@ -243,13 +198,17 @@ window.addEventListener('keydown', (e) => {
     case 'v': case 'V':
       e.preventDefault(); sendSample('stop'); break;
     case '1':
-      e.preventDefault(); sendArmVelocity(1, -200); break;
+      e.preventDefault(); sendArmVelocity(1, ARM_VELOCITY);
+      document.getElementById('btn-servo1-fwd').classList.add('pressed'); break;
     case '2':
-      e.preventDefault(); sendArmVelocity(1, 200); break;
+      e.preventDefault(); sendArmVelocity(1, -ARM_VELOCITY);
+      document.getElementById('btn-servo1-rev').classList.add('pressed'); break;
     case '3':
-      e.preventDefault(); sendArmVelocity(2, -200); break;
+      e.preventDefault(); sendArmVelocity(2, ARM_VELOCITY);
+      document.getElementById('btn-servo2-fwd').classList.add('pressed'); break;
     case '4':
-      e.preventDefault(); sendArmVelocity(2, 200); break;
+      e.preventDefault(); sendArmVelocity(2, -ARM_VELOCITY);
+      document.getElementById('btn-servo2-rev').classList.add('pressed'); break;
     case 'i': case 'I':
       e.preventDefault(); initArm(); break;
   }

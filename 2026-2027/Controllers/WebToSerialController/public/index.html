@@ -67,33 +67,27 @@
       </div>
 
       <!-- Column 3: Arm Servos (velocity mode) -->
-      <section id="arm-section" class="control-card">
-        <h2>Arm Servos</h2>
-        <div id="arm-controls">
-          <button id="btn-arm-init" class="init-btn">Init Velocity Mode</button>
-          <div class="servo-row">
-            <label>Servo 1 <span id="servo1-val">0</span></label>
-            <input type="range" id="servo1-slider" min="-500" max="500" value="0" step="10">
-            <div class="servo-btns">
-              <button id="btn-servo1-torque" class="torque-btn on" data-servo="1">Torque</button>
-            </div>
+      <div id="arm-column">
+        <section id="arm-init-section" class="control-card">
+          <button id="btn-arm-init" class="init-btn">⚡ Init Velocity Mode</button>
+        </section>
+        <section id="servo1-section" class="control-card">
+          <h2>Servo 1</h2>
+          <div class="motor-controls">
+            <button id="btn-servo1-fwd" class="tool-btn forward-btn">↻ Forward</button>
+            <button id="btn-servo1-rev" class="tool-btn reverse-btn">↺ Reverse</button>
+            <button id="btn-servo1-stop" class="tool-btn stop-sm-btn">■ Stop</button>
           </div>
-          <div class="servo-row">
-            <label>Servo 2 <span id="servo2-val">0</span></label>
-            <input type="range" id="servo2-slider" min="-500" max="500" value="0" step="10">
-            <div class="servo-btns">
-              <button id="btn-servo2-torque" class="torque-btn on" data-servo="2">Torque</button>
-            </div>
+        </section>
+        <section id="servo2-section" class="control-card">
+          <h2>Servo 2</h2>
+          <div class="motor-controls">
+            <button id="btn-servo2-fwd" class="tool-btn forward-btn">↻ Forward</button>
+            <button id="btn-servo2-rev" class="tool-btn reverse-btn">↺ Reverse</button>
+            <button id="btn-servo2-stop" class="tool-btn stop-sm-btn">■ Stop</button>
           </div>
-          <div class="arm-presets">
-            <button class="preset-btn" data-v1="-200" data-v2="0">S1 ←</button>
-            <button class="preset-btn" data-v1="200" data-v2="0">S1 →</button>
-            <button class="preset-btn" data-v1="0" data-v2="-200">S2 ←</button>
-            <button class="preset-btn" data-v1="0" data-v2="200">S2 →</button>
-            <button class="preset-btn stop" data-v1="0" data-v2="0">Stop All</button>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
 
     <!-- Emergency Stop Bar -->

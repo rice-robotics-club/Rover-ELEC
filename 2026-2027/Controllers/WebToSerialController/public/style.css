@@ -56,8 +56,8 @@ section h2 {
   text-transform: uppercase; letter-spacing: 1px;
 }
 
-/* === Tools Column (Drill + Sample stacked) === */
-#tools-column { display: flex; flex-direction: column; gap: 6px; }
+/* === Tools + Arm Columns (stacked cards) === */
+#tools-column, #arm-column { display: flex; flex-direction: column; gap: 6px; }
 
 /* === D-Pad === */
 #dpad {
@@ -128,42 +128,13 @@ section h2 {
 .stop-sm-btn { background: var(--surface2); border-color: var(--text-muted); color: var(--text); }
 .stop-sm-btn:hover, .stop-sm-btn:active, .stop-sm-btn.pressed { background: #555; }
 
-/* === Arm Servo Controls (velocity mode) === */
-#arm-controls { display: flex; flex-direction: column; gap: 6px; }
+/* === Arm Init Button === */
 .init-btn {
-  width: 100%; padding: 5px; font-size: 0.7rem; font-weight: 700;
+  width: 100%; padding: 6px; font-size: 0.7rem; font-weight: 700;
   border-radius: var(--radius); cursor: pointer;
-  background: var(--surface2); color: var(--text); border: 1px solid var(--blue);
+  background: var(--accent2); color: var(--text); border: 1px solid var(--accent);
 }
-.init-btn:hover { background: var(--blue); }
-.servo-row {
-  display: flex; flex-direction: column; gap: 2px;
-}
-.servo-row label {
-  font-size: 0.7rem; font-weight: 600; display: flex; justify-content: space-between;
-}
-.servo-row label span { color: var(--accent); }
-.servo-row input[type="range"] {
-  width: 100%; accent-color: var(--accent2); height: 5px;
-}
-.servo-btns { display: flex; gap: 4px; margin-top: 2px; }
-.torque-btn {
-  font-size: 0.6rem; padding: 3px 8px; border-radius: 3px;
-  border: 1px solid var(--text-muted); cursor: pointer; font-weight: 700;
-  background: var(--surface2); color: var(--text);
-}
-.torque-btn.on { background: var(--green); border-color: #2ecc71; color: #fff; }
-.torque-btn.off { background: var(--red); border-color: #e74c3c; color: #fff; }
-.arm-presets { display: flex; flex-wrap: wrap; gap: 3px; }
-.preset-btn {
-  font-size: 0.6rem; padding: 3px 6px; border-radius: 3px;
-  border: 1px solid var(--blue); cursor: pointer;
-  background: var(--surface2); color: var(--text);
-  white-space: nowrap;
-}
-.preset-btn:hover { background: var(--blue); }
-.preset-btn.stop { border-color: var(--red); }
-.preset-btn.stop:hover { background: var(--red); }
+.init-btn:hover { background: var(--accent); }
 
 /* === Debug Log === */
 #debug-section {
