@@ -17,6 +17,73 @@ const DEFAULT_DRILL_BAUD = 115200;
 const DEFAULT_ARM_BAUD = 57600;   // Arduino Hat uses 57600 baud
 const HTTP_PORT = 3000;
 
+// --- Arm command queue (rate-limited, ACK-gated) ---
+const ARM_CMD_TIMEOUT = 500;   // ms to wait for OK/ERR before sending next
+const ARM_CMD_GAP = 30;        // minimum ms gap between commands
+const armQueue = [];
+let armBusy = false;
+let armTimer = null;
+
+function flushArmQueue() {
+  armQueue.length = 0;
+  if (armTimer) { clearTimeout(armTimer); armTimer = null; }
+  armBusy = false;
+}
+
+function processArmQueue() {
+  if (armBusy || armQueue.length === 0) return;
+  if (!armPort || !armPort.isOpen) {
+    flushArmQueue();
+    return;
+  }
+
+  armBusy = true;
+  const cmd = armQueue.shift();
+  const msg = cmd + '\n';
+  console.log(`[Arm] TX: ${msg.trim()}`);
+  armPort.write(msg, (err) => {
+    if (err) console.error(`[Arm] Write error: ${err.message}`);
+  });
+
+  // Safety timeout: if Arduino doesn't respond, proceed anyway
+  armTimer = setTimeout(() => {
+    console.warn(`[Arm] Timeout waiting for response to: ${cmd}`);
+    armBusy = false;
+    armTimer = null;
+    setTimeout(() => processArmQueue(), ARM_CMD_GAP);
+  }, ARM_CMD_TIMEOUT);
+}
+
+function onArmResponse() {
+  if (armBusy && armTimer) {
+    clearTimeout(armTimer);
+    armTimer = null;
+    armBusy = false;
+    setTimeout(() => processArmQueue(), ARM_CMD_GAP);
+  }
+}
+
+function queueArmCommand(command) {
+  if (!armPort || !armPort.isOpen) {
+    console.warn(`[Arm] Port not open, dropping: ${command}`);
+    return;
+  }
+
+  // Dedup: replace any queued command with the same type+servo (first two tokens)
+  const dedupKey = command.split(' ').slice(0, 2).join(' ');  // e.g. "V 1"
+  for (let i = armQueue.length - 1; i >= 0; i--) {
+    const existingKey = armQueue[i].split(' ').slice(0, 2).join(' ');
+    if (existingKey === dedupKey) {
+      console.log(`[Arm] Dedup: replacing "${armQueue[i]}" → "${command}"`);
+      armQueue[i] = command;
+      return;  // replaced in place, no need to push
+    }
+  }
+
+  armQueue.push(command);
+  processArmQueue();
+}
+
 // --- Serial Port State ---
 let movePort = null;
 let drillPort = null;
@@ -55,20 +122,26 @@ function openSerialPort(portPath, baudRate, label) {
       port: label,
       timestamp,
       data: trimmed,
-      // Movement/Drill use ACK: prefix; Arm (Dynamixel Hat) uses OK/ERR
       isAck: trimmed.startsWith('ACK:') || trimmed.startsWith('OK'),
       isError: trimmed.includes('STALLED') || trimmed.includes('ERROR') || trimmed.startsWith('ERR')
     });
+
+    // Arm port: detect OK/ERR response → unblock queue
+    if (label === 'Arm' && (trimmed.startsWith('OK') || trimmed.startsWith('ERR'))) {
+      onArmResponse();
+    }
   });
 
   port.on('close', () => {
     console.log(`[${label}] Port closed: ${portPath}`);
     io.emit('port-status', { label, connected: false, path: portPath, error: 'Port closed' });
+    if (label === 'Arm') flushArmQueue();
   });
 
   port.on('error', (err) => {
     console.error(`[${label}] Error: ${err.message}`);
     io.emit('port-status', { label, connected: false, path: portPath, error: err.message });
+    if (label === 'Arm') flushArmQueue();
   });
 
   return port;
@@ -89,6 +162,7 @@ function closeSerialPort(port, label, path) {
 
 // --- Open all serial ports ---
 function openAllPorts() {
+  flushArmQueue();
   closeSerialPort(movePort, 'Movement', movePortPath);
   closeSerialPort(drillPort, 'Drill', drillPortPath);
   closeSerialPort(armPort, 'Arm', armPortPath);
@@ -111,20 +185,6 @@ function writeCommand(port, portPath, label, command, speed) {
     return false;
   }
   const msg = `${command},${speed}\n`;
-  console.log(`[${label}] TX: ${msg.trim()}`);
-  port.write(msg, (err) => {
-    if (err) console.error(`[${label}] Write error: ${err.message}`);
-  });
-  return true;
-}
-
-// --- Helper: write text command to arm port (space-delimited protocol) ---
-function writeArmCommand(port, portPath, label, command) {
-  if (!port || !port.isOpen) {
-    console.warn(`[${label}] Cannot write: port ${portPath} not open`);
-    return false;
-  }
-  const msg = command + '\n';
   console.log(`[${label}] TX: ${msg.trim()}`);
   port.write(msg, (err) => {
     if (err) console.error(`[${label}] Write error: ${err.message}`);
@@ -182,20 +242,18 @@ io.on('connection', (socket) => {
     writeCommand(drillPort, drillPortPath, 'Drill', cmd, spd);
   });
 
-  // --- Arm: initialise servos into velocity mode ---
+  // --- Arm: initialise servos into velocity mode (queued, one at a time) ---
   socket.on('arm-init', (data) => {
-    // data: { servoId: 1-4 } or omit to init servos 1 & 2
     const ids = data && data.servoId ? [parseInt(data.servoId)] : [1, 2];
     ids.forEach(id => {
       if (id < 1 || id > 4) return;
-      writeArmCommand(armPort, armPortPath, 'Arm', `T ${id} 1`);       // torque on
-      writeArmCommand(armPort, armPortPath, 'Arm', `MODE ${id} 1`);    // velocity mode
+      queueArmCommand(`T ${id} 1`);
+      queueArmCommand(`MODE ${id} 1`);
     });
   });
 
   // --- Arm servo velocity commands (Dynamixel Hat, velocity mode) ---
   socket.on('arm-velocity', (data) => {
-    // data: { servoId: 1-4, velocity: -1023..1023 }
     const id = parseInt(data.servoId);
     if (isNaN(id) || id < 1 || id > 4) {
       console.warn(`[Arm] Invalid servo ID: ${data.servoId}`);
@@ -204,19 +262,17 @@ io.on('connection', (socket) => {
     let vel = parseInt(data.velocity);
     if (isNaN(vel)) vel = 0;
     vel = Math.max(-1023, Math.min(1023, vel));
-    writeArmCommand(armPort, armPortPath, 'Arm', `V ${id} ${vel}`);
+    queueArmCommand(`V ${id} ${vel}`);
   });
 
   socket.on('arm-torque', (data) => {
-    // data: { servoId: 1-4, enable: true/false }
     const id = parseInt(data.servoId);
     const val = data.enable ? '1' : '0';
-    writeArmCommand(armPort, armPortPath, 'Arm', `T ${id} ${val}`);
+    queueArmCommand(`T ${id} ${val}`);
   });
 
   socket.on('arm-raw', (data) => {
-    // data: { command: "P 1" or "SD 2" etc. }
-    writeArmCommand(armPort, armPortPath, 'Arm', data.command);
+    queueArmCommand(data.command);
   });
 
   // --- Emergency stop (stops everything on all three ports) ---
@@ -225,9 +281,10 @@ io.on('connection', (socket) => {
     writeCommand(movePort, movePortPath, 'Movement', 0, 0);
     writeCommand(drillPort, drillPortPath, 'Drill', 7, 0);
     writeCommand(drillPort, drillPortPath, 'Drill', 19, 0);
-    // Stop arm servos: zero velocity + torque off (IDs 1-2)
-    for (let id = 1; id <= 4; id++) {
-      writeArmCommand(armPort, armPortPath, 'Arm', `V ${id} 0`);
+    // Flush pending arm commands, send stop immediately
+    flushArmQueue();
+    for (let id = 1; id <= 2; id++) {
+      queueArmCommand(`V ${id} 0`);
     }
   });
 
