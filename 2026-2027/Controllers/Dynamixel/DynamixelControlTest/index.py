@@ -1,3 +1,5 @@
+#plug dynamixel connection usb into your computer and use this program to test the dynamixels (for the bigger dynamixels we *think*)
+
 #!/usr/bin/env python3
 
 from dynamixel_sdk import *
