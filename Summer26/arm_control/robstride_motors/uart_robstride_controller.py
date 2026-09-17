@@ -1,64 +1,71 @@
 # WARNING: IMPLEMENTATION IN PROGRESS
 
 import serial
-from serial import EIGHTBITS, PARITY_NONE, STOPBITS_ONE
 import struct
-
-import threading
-import keyboard
+import sys
+import termios
+import tty
+import select
 import time
 
+MOTOR_IDS = {'1': 127, '2': 7, '3': 6}
+target = MOTOR_IDS['1']
 torque = 0.0
 position = 0.0
-velocity = 0.0
 
-MOTOR_IDS = {'1': 127, '2': 7, '3': 6}
-target_lock = threading.Lock()
+HOLD_TIMEOUT = 0.2  # seconds - treat key as "still held" if repeats arrive faster than this
 
-def read_target_id():
-    global target
-    while True:
-        target_choice = input()
-        if target_choice in MOTOR_IDS:
-            with target_lock:
-                target = MOTOR_IDS[target_choice]
-        else:
-            print("Invalid ID") 
+def read_key():
+    """Non-blocking: returns a single character if one is waiting, else None."""
+    dr, _, _ = select.select([sys.stdin], [], [], 0)
+    if dr:
+        return sys.stdin.read(1)
+    return None
 
 def main():
-    # Define and Configure UART Port
+    global target
     port = serial.Serial(
-        port='/dev/ttyAMA0', 
-        baudrate=115200, 
-        bytesize=EIGHTBITS, 
-        parity=PARITY_NONE, 
-        stopbits=STOPBITS_ONE, 
-        timeout=None, 
-        xonxoff=False, 
-        rtscts=False, 
-        write_timeout=None, 
-        dsrdtr=False, 
-        inter_byte_timeout=None,
-        exclusive=None
+        port='/dev/ttyAMA0',
+        baudrate=115200,
+        bytesize=serial.EIGHTBITS,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        timeout=None,
     )
 
-    # Execute Parallel Threads to Read Keyboard Inputs
-    thread = threading.Thread(target=read_target_id, daemon=True)
-    thread.start()
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    velocity = 0.0
+    last_w = last_s = 0.0
 
-    while(1):
-        if keyboard.is_pressed('w'):
-            velocity = 1.0
-        elif keyboard.is_pressed('s'):
-            velocity = -1.0
-        else:
-            velocity = 0.0
+    try:
+        tty.setcbreak(fd)  # keys register immediately, no Enter needed
+        print("w/s = forward/reverse (hold), 1/2/3 = select motor, q = quit")
+        while True:
+            key = read_key()
+            now = time.monotonic()
 
-        with target_lock:
-            current_target = target
+            if key == 'w':
+                last_w = now
+            elif key == 's':
+                last_s = now
+            elif key in MOTOR_IDS:
+                target = MOTOR_IDS[key]
+            elif key == 'q':
+                break
 
-        port.write(struct.pack('<Ifff', current_target, torque, position, velocity))
-        time.sleep(0.01)  # 100Hz
+            # Terminal key-repeat acts as our "still held" heartbeat
+            if now - last_w < HOLD_TIMEOUT:
+                velocity = 1.0
+            elif now - last_s < HOLD_TIMEOUT:
+                velocity = -1.0
+            else:
+                velocity = 0.0
+
+            port.write(struct.pack('<Ifff', target, torque, position, velocity))
+            time.sleep(0.01)  # 100Hz
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
 if __name__ == "__main__":
     main()
