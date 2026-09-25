@@ -8,10 +8,11 @@ Allow Arduino IDE to also install the required **Dynamixel2Arduino** dependency.
 
 > **Warning:** The DYNAMIXEL Shield does not contain a buck converter.  
 > All DYNAMIXEL power pins receive the voltage connected to the shield's
-> green power terminal. Do not connect a 12 V motor while the shield is
-> receiving 24 V.
+> green power terminal. ***Do not connect a 12 V motor while the shield is
+> receiving 24 V***
 
-## Wiring
+
+## Wiring ##
 
 1. Turn off and disconnect all motor power.
 2. Connect the motor communication cable:
@@ -27,7 +28,8 @@ Allow Arduino IDE to also install the required **Dynamixel2Arduino** dependency.
 6. Secure the motor before enabling torque.
 7. Never connect or disconnect a motor cable while power is on.
 
-## Uploading Code to the Arduino
+
+## Uploading Code to the Arduino ##
 
 1. Set the shield's UART switch to **UPLOAD**.
 2. Turn **OFF** the shield's DYNAMIXEL power switch.
@@ -41,7 +43,8 @@ Allow Arduino IDE to also install the required **Dynamixel2Arduino** dependency.
 8. Turn **ON** the shield's DYNAMIXEL power switch.
 9. Press the Arduino's **RESET** button.
 
-## Safety
+
+## Safety ##
 
 - Secure the motor before enabling torque.
 - Ensure the horn and attached mechanism can rotate without obstruction.
