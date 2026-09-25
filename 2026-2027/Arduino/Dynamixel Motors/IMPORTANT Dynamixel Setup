@@ -1,0 +1,56 @@
+# DYNAMIXEL Shield Setup
+
+## Required Arduino Libraries
+
+Install **DynamixelShield** through the Arduino IDE Library Manager.
+
+Allow Arduino IDE to also install the required **Dynamixel2Arduino** dependency.
+
+> **Warning:** The DYNAMIXEL Shield does not contain a buck converter.  
+> All DYNAMIXEL power pins receive the voltage connected to the shield's
+> green power terminal. ***Do not connect a 12 V motor while the shield is
+> receiving 24 V***
+
+
+## Wiring ##
+
+1. Turn off and disconnect all motor power.
+2. Connect the motor communication cable:
+   - 3-pin connector for TTL motors.
+   - 4-pin connector for RS-485 motors.
+3. Verify the power-supply polarity:
+   - Red wire to `+`.
+   - Black wire to `-`/GND.
+4. Disconnect the shield's `VIN` jumper when using the green external
+   power terminal.
+5. For the M54 PRO motor, also connect 24 V to its separate two-pin
+   accessory power connector.
+6. Secure the motor before enabling torque.
+7. Never connect or disconnect a motor cable while power is on.
+
+
+## Uploading Code to the Arduino ##
+
+1. Set the shield's UART switch to **UPLOAD**.
+2. Turn **OFF** the shield's DYNAMIXEL power switch.
+3. Connect the Arduino to the computer using USB.
+4. In Arduino IDE, select **Arduino Uno** and the correct COM port.
+5. Upload the code.
+6. Set the shield's UART switch to **DYNAMIXEL**.
+7. Apply the correct motor voltage:
+   - 12 V for the XM430.
+   - 24 V for the M54.
+8. Turn **ON** the shield's DYNAMIXEL power switch.
+9. Press the Arduino's **RESET** button.
+
+
+## Safety ##
+
+- Secure the motor before enabling torque.
+- Ensure the horn and attached mechanism can rotate without obstruction.
+- Keep hands, wires, and tools away from the motor while it is moving.
+- Turn off motor power immediately if the motor becomes hot, vibrates
+  unexpectedly, or produces unusual noises.
+- Do not power the Arduino through the shield when 24 V is connected.
+  Power the Arduino through USB and leave the shield's VIN jumper
+  disconnected.
