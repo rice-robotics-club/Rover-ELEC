@@ -1,1 +1,2 @@
 For the M54 PRO motor, the one we're using has an ID of 6 and operates at a 57,600 baud rate
+  - The motors we have are labeled with their IDs currently, but you can run a script to ping the ID and baud rate if it isn't correct
