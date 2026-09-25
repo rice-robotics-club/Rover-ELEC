@@ -1,0 +1,2 @@
+For the XM430 motor, the one we're using has an ID of 3 and operates at a 1,000,000 baud rate
+  - The motors we have are labeled with their IDs currently, but you can run a script to ping the ID and baud rate if it isn't correct
