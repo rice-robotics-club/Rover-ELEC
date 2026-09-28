@@ -13,6 +13,8 @@
 #include "esp_twai.h"
 #include "esp_twai_onchip.h"
 
+#include <math.h>
+
 // ESP32 ID for CAN Communication
 const uint32_t hostID = 253;
 
@@ -20,19 +22,19 @@ const uint32_t hostID = 253;
 #define TX_PIN GPIO_NUM_5
 #define RX_PIN GPIO_NUM_4
 
-//Define Robstride Command Payload Struct
+// Define Robstride Command Payload Struct
 typedef struct {
-    float target;
+    uint32_t target;
     float torque;
     float position;
     float velocity;
 } robstride_commands_t;
 robstride_commands_t robstrideCommands;
 
-// Define Queue for Robstride Command Payloads
+// Define Queue Handle for Robstride Command Payloads
 static QueueHandle_t robstrideCommandsQueue = NULL;
 
-//Handler for TWAI Node
+// Handler for TWAI Node
 twai_node_handle_t twai_node_hdl = NULL;
 
 // CAN Host ID Required for Enabling Robstride Motors
@@ -40,19 +42,19 @@ uint32_t buildHostID(uint8_t controlMode, uint32_t hostID, uint32_t targetID) {
     return ((uint32_t)controlMode << 24) | (hostID << 8) | targetID;
 }
 
-// CAN Motion Control ID Required for the MIT Motor Control Protocol
+// CAN Motion Control ID Required for the Robstride Motor Control Protocol
 uint32_t buildMotionControlID(uint8_t controlMode, uint32_t torque, uint32_t targetID) {
     return ((uint32_t)controlMode << 24) | (torque << 8) | targetID;
 }
 
+// Helper Function for Communication Type 3, Used to Enable the Robstride
 void enableRobstride(uint32_t host, uint32_t target) {
-   
     uint8_t payload[8] = {0};
     twai_frame_t enable = {
         .header.id = buildHostID(0x03, host, target),    // Communication Type 3 - 0x03
-        .header.ide = true,                              //Use 29-Bit Extended ID Format
-        .buffer = payload,                               //Pointer to Data to Transmit
-        .buffer_len = sizeof(payload),                   //Length of Data to Transmit
+        .header.ide = true,                              // Use 29-Bit Extended ID Format
+        .buffer = payload,                               // Pointer to Data to Transmit
+        .buffer_len = sizeof(payload),                   // Length of Data to Transmit
     };
 
     ESP_ERROR_CHECK(twai_node_transmit(twai_node_hdl, &enable, 0));       // Timeout = 0: returns immediately if queue is full
@@ -64,13 +66,24 @@ static uint16_t floatToUint16(float x, float x_min, float x_max) {
     return (uint16_t)(((x - x_min) * 65535.0f / (x_max - x_min)) + 0.5f);
 }
 
+float i = 0.0;
+uint16_t vel = 0;
+
 void transmitRobstridePayload(robstride_commands_t commands) {
-    //Robstride Payload Commands
+    // Robstride Payload Commands
     uint16_t targetID = (uint16_t)commands.target;
     uint16_t trq= floatToUint16(0.0f, -17.0f, 17.0f);
     uint16_t pos = floatToUint16(0.0f, -4.0f * 3.14159265f, 4.0f * 3.14159265f);
-    uint16_t vel = floatToUint16(10.0 * commands.velocity, -44.0f, 44.0f);
-   
+    
+    // Accelerate to Target Velocity
+    if (i < commands.velocity) {
+        i = fminf(i + 0.1, commands.velocity);
+    }
+    else if (i > commands.velocity) {
+        i = fmaxf(i - 0.1, commands.velocity);
+    }
+    vel = floatToUint16(5.0f * i, -44.0f, 44.0f);
+
     //Kp and Kd Values
     uint16_t Kp = floatToUint16(0.0f, 0.0f, 500.0f);
     uint16_t Kd  = floatToUint16(0.5f, 0.0f, 5.0f);
@@ -89,11 +102,11 @@ void transmitRobstridePayload(robstride_commands_t commands) {
 
     twai_frame_t run = {
         .header = {
-            .id = buildMotionControlID(0x01, trq, 0x06),  // Communication Type 1 - 0x01
+            .id = buildMotionControlID(0x01, trq, targetID),  // Communication Type 1 - 0x01
             .ide = true,  
-        },                                                // Use Extended 29-Bit ID Header
+        },                                                    // Use Extended 29-Bit ID Header
         .buffer = commandPayload,
-        .buffer_len = 8, //sizeof(commandPayload)
+        .buffer_len = 8,                                      //sizeof(commandPayload)
 
     };
 
@@ -116,7 +129,7 @@ void controlRobstrideMotors(void *parameter) {
     }
 }
 
-/*
+
 void controlDynamixelMotors(void *parameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t period = pdMS_TO_TICKS(10); //100Hz
@@ -125,6 +138,7 @@ void controlDynamixelMotors(void *parameters) {
     }
 }
 
+/*
 void controlDynamixelServos(void *parameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t period = pdMS_TO_TICKS(10); //100Hz
@@ -192,7 +206,7 @@ void app_main(void) {
         1
     );
 
-    /*
+    
     xTaskCreatePinnedToCore(
         controlDynamixelMotors,
         "Control Dynamixel Motor Actuators",
@@ -203,6 +217,7 @@ void app_main(void) {
         1
     );
 
+    /*
     xTaskCreatePinnedToCore(
         controlDynamixelServos,
         "Control Dynamixel Servo Actuators",
@@ -224,7 +239,6 @@ void app_main(void) {
         1
     );
 }
-
 
 
 
