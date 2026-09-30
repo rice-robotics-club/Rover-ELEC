@@ -47,17 +47,21 @@ uint32_t buildMotionControlID(uint8_t controlMode, uint32_t torque, uint32_t tar
     return ((uint32_t)controlMode << 24) | (torque << 8) | targetID;
 }
 
-// Helper Function for Communication Type 3, Used to Enable the Robstride
+// Enable Robstride Motor, Ensure to Keep Payloads, Frames, and Relevant Variables Static
 void enableRobstride(uint32_t host, uint32_t target) {
-    uint8_t payload[8] = {0};
-    twai_frame_t enable = {
-        .header.id = buildHostID(0x03, host, target),    // Communication Type 3 - 0x03
-        .header.ide = true,                              // Use 29-Bit Extended ID Format
-        .buffer = payload,                               // Pointer to Data to Transmit
-        .buffer_len = sizeof(payload),                   // Length of Data to Transmit
-    };
+    static uint8_t payload[3][8] = {{0}};
+    static twai_frame_t enable[3];
+    static int slot = 0;
 
-    ESP_ERROR_CHECK(twai_node_transmit(twai_node_hdl, &enable, 0));       // Timeout = 0: returns immediately if queue is full
+    int s = slot;
+    slot = (slot + 1) % 3;
+
+    enable[s].header.id = buildHostID(0x03, host, target);    // Communication Type 3 - 0x03
+    enable[s].header.ide = true;                              // Use 29-Bit Extended ID Format
+    enable[s].buffer = payload[s];                            // Pointer to Data to Transmit
+    enable[s].buffer_len = sizeof(payload[s]);                // Length of Data to Transmit
+
+    ESP_ERROR_CHECK(twai_node_transmit(twai_node_hdl, &enable[s], 0));   // Timeout = 0: returns immediately if queue is full
 }
 
 static uint16_t floatToUint16(float x, float x_min, float x_max) {
@@ -68,7 +72,6 @@ static uint16_t floatToUint16(float x, float x_min, float x_max) {
 
 float i = 0.0;
 uint16_t vel = 0;
-
 void transmitRobstridePayload(robstride_commands_t commands) {
     // Robstride Payload Commands
     uint16_t targetID = (uint16_t)commands.target;
@@ -88,8 +91,10 @@ void transmitRobstridePayload(robstride_commands_t commands) {
     uint16_t Kp = floatToUint16(0.0f, 0.0f, 500.0f);
     uint16_t Kd  = floatToUint16(0.5f, 0.0f, 5.0f);
 
-    //Define and Pack 8 Byte Payload
-    uint8_t commandPayload[8];
+    // Define and Pack 8 Byte Payload.
+    // NOTE (unchanged from before): already 'static' from the previous fix, so this
+    // buffer's lifetime already outlives the function call -- kept as-is here.
+    static uint8_t commandPayload[8];
 
     commandPayload[0] = (uint8_t)((pos >> 8) & 0xFF);
     commandPayload[1] = (uint8_t)(pos & 0xFF);
@@ -100,15 +105,13 @@ void transmitRobstridePayload(robstride_commands_t commands) {
     commandPayload[6] = (uint8_t)((Kd >> 8) & 0xFF);
     commandPayload[7] = (uint8_t)(Kd & 0xFF);
 
-    twai_frame_t run = {
-        .header = {
-            .id = buildMotionControlID(0x01, trq, targetID),  // Communication Type 1 - 0x01
-            .ide = true,  
-        },                                                    // Use Extended 29-Bit ID Header
-        .buffer = commandPayload,
-        .buffer_len = 8,                                      //sizeof(commandPayload)
+    // NOTE (unchanged from before): already 'static' from the previous fix.
+    static twai_frame_t run;
 
-    };
+    run.header.id = buildMotionControlID(0x01, trq, targetID);  // Communication Type 1 - 0x01
+    run.header.ide = true;                                      // Use Extended 29-Bit ID Header
+    run.buffer = commandPayload;
+    run.buffer_len = 8;                                         //sizeof(commandPayload)
 
     twai_node_transmit(twai_node_hdl, &run, 0);
 }
@@ -119,6 +122,8 @@ void controlRobstrideMotors(void *parameter) {
 
     // Enable All Robstride Motors
     enableRobstride(hostID, 0x06);
+    enableRobstride(hostID, 0x07);
+    enableRobstride(hostID, 0x7F);
 
     while(1) {
         //Receives target motor ID, torque, position, and velocity from UART
@@ -129,7 +134,7 @@ void controlRobstrideMotors(void *parameter) {
     }
 }
 
-
+/*
 void controlDynamixelMotors(void *parameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t period = pdMS_TO_TICKS(10); //100Hz
@@ -138,7 +143,6 @@ void controlDynamixelMotors(void *parameters) {
     }
 }
 
-/*
 void controlDynamixelServos(void *parameters) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t period = pdMS_TO_TICKS(10); //100Hz
@@ -206,7 +210,7 @@ void app_main(void) {
         1
     );
 
-    
+    /*
     xTaskCreatePinnedToCore(
         controlDynamixelMotors,
         "Control Dynamixel Motor Actuators",
@@ -217,7 +221,6 @@ void app_main(void) {
         1
     );
 
-    /*
     xTaskCreatePinnedToCore(
         controlDynamixelServos,
         "Control Dynamixel Servo Actuators",
@@ -239,7 +242,6 @@ void app_main(void) {
         1
     );
 }
-
 
 
 
