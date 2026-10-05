@@ -1,3 +1,5 @@
 same setup for this as for using either motor
 
 this can be used for either type of motor and allows you to change the motor ID and baud rate
+
+I currently have the motors labeled 1-8 (should be 9 motors but one of them isn't working) and set to a 57,600 baud rate
