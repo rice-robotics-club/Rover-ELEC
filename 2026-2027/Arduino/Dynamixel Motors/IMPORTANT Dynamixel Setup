@@ -1,6 +1,6 @@
 # DYNAMIXEL Shield Setup
 
-## Required Arduino Libraries
+## Required Arduino Libraries ##
 
 Install **DynamixelShield** through the Arduino IDE Library Manager.
 
