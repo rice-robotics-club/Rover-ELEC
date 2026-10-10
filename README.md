@@ -60,7 +60,7 @@ chip.
 ### Ground rules
 
 - Don't delete folders your subsystem isn't using yet. Leave the stub `README.md` so every subsystem looks the same.
-- Allowed boards: Arduino (initial testing only), ESP32 DevKit V1, ESP32-S3.
+- Allowed boards: Arduino (initial testing only) and ESP-32S.
 - Arduino IDE is only for `arduino-core/`, and PlatformIO is only for `esp-idf/`.
 - Never commit build outputs (`.pio/`, `build/`, `install/`, `log/`) or large videos.# Rover-ELEC
 Repo for all you rover elec fiends
