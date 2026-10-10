@@ -40,12 +40,12 @@ Older seasons are kept as-is for reference. **All new work goes in `2026-2027/`.
 
 | Subsystem | What it does | Lead |
 |---|---|---|
-| [rover-arm](2026-2027/rover-arm/) | TODO | TODO |
-| [rover-drivetrain](2026-2027/rover-drivetrain/) | TODO | TODO |
-| [rover-science](2026-2027/rover-science/) | TODO | TODO |
-| [rover-communication](2026-2027/rover-communication/) | TODO | TODO |
-| [rover-power](2026-2027/rover-power/) | TODO | TODO |
-| [rover-integration](2026-2027/rover-integration/) | Jetson, ROS 2 workspace, and connecting all subsystems | TODO |
+| [rover-arm](2026-2027/rover-arm/) | Controls the Dynamixel and Robstride actuators on the arm for autonomous and teleop tasks | Joshua Aviles |
+| [rover-drivetrain](2026-2027/rover-drivetrain/) | Controls the Robstrides on the drivetrain for autonomous and teleop tasks | Joshua Aviles |
+| [rover-science](2026-2027/rover-science/) | Control and manage the sensors and actuators needed for science | Sean Drzewiczewski |
+| [rover-communication](2026-2027/rover-communication/) | Establish the link between the radios on the rover and the base station | Sam Wilson |
+| [rover-power](2026-2027/rover-power/) | Provide and manage the power needed for all subsystems and their individual components | Miles Kammler |
+| [rover-integration](2026-2027/rover-integration/) | Connect all subsystems to the onboard computer under a single ROS workspace | Sam Wilson |
 
 Not sure who to ask? Start with the subsystem lead.
 
@@ -121,10 +121,10 @@ rover-<subsystem>/
 | Area | Standard |
 |---|---|
 | Onboard computer | NVIDIA Jetson, Ubuntu 24.04, ROS 2 Jazzy |
-| Microcontrollers | Arduino (initial testing only), ESP32 DevKit V1, ESP32-S3 (long-term target) |
+| Microcontrollers | Arduino (initial testing only) and ESP-32S |
 | Firmware | Arduino core (Arduino IDE) or ESP-IDF (PlatformIO) |
-| PCB design | KiCad TODO (version) |
-| Mechanical CAD | TODO |
+| PCB design | KiCad |
+| Mechanical CAD | Onshape |
 
 ---
 
