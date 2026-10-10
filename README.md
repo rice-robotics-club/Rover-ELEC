@@ -20,19 +20,20 @@ This repository holds all of our rover work. The current focus is the **2026-202
 ## Repository Layout
 
 ```
-rice-robotics-urc/
+Rover-ELEC/
 ├── 2024-2025/              # archive
 ├── 2025-2026/              # archive
-└── 2026-2027/              # current season
-    ├── rover-arm/
-    ├── rover-drivetrain/
-    ├── rover-science/
-    ├── rover-communication/
-    ├── rover-power/
-    └── rover-integration/
+├── 2026-2027/              # current season
+│   ├── rover-arm/
+│   ├── rover-drivetrain/
+│   ├── rover-science/
+│   ├── rover-communication/
+│   ├── rover-power/
+│   └── rover-integration/
+└── Summer26/               # archive
 ```
 
-Older seasons are kept as-is for reference. **All new work goes in `2026-2027/`.**
+`2024-2025/`, `2025-2026/`, and `Summer26/` are kept as-is for reference. **All new work goes in `2026-2027/`.**
 
 ---
 
@@ -133,8 +134,8 @@ rover-<subsystem>/
 1. **Install git** and set up your GitHub account. Ask a lead to add you to the repo.
 2. **Clone the repo:**
 ```bash
-   git clone TODO (repo URL)
-   cd TODO (repo folder)
+   git clone https://github.com/rice-robotics-club/Rover-ELEC.git
+   cd Rover-ELEC 
 ```
 3. **Install the tools for your subsystem:**
    - **Firmware (Arduino):** [Arduino IDE](https://www.arduino.cc/en/software) + the ESP32 board package
