@@ -1,6 +1,6 @@
-# node-name
+# run-robstride
 
-Short 1-2 sentence summary of what this firmware does and what it connects to.
+This firmware continuously runs a single robstride motor at a constant velocity. This is done through the Node MCU ESP-32S and a CAN Transceiver.
 
 <!--
 How to fill this in:
@@ -13,8 +13,8 @@ How to fill this in:
 
 | Field | Value |
 |---|---|
-| **Board** |  |
-| **Tool** |  |
-| **Board package / platform** |  |
-| **Libraries** |  |
+| **Board** | nodemcu-32s |
+| **Tool** | PlatformIO Core, version 6.1.19 |
+| **Board package / platform** | esp32 by Espressif Systems 7.0.1 |
+| **Libraries** | None |
 | **Wiring** | [docs/hardware.md](../../../docs/hardware.md) |
