@@ -109,6 +109,33 @@ rover-<subsystem>/
 
 **`scripts/`**: Helper scripts for flashing, calibration, parsing logs, and similar tasks.
 
+## Firmware README Template
+
+Every firmware folder (`arduino-core/<node-name>/` or `esp-idf/<node-name>/`) needs a `README.md`. Copy this, fill in the table, and leave the hint comment in if you want (it doesn't show on GitHub).
+
+```markdown
+# node-name
+
+Short 1-2 sentence summary of what this firmware does and what it connects to.
+
+<!--
+How to fill this in:
+- Board: exact name from Tools > Board (Arduino IDE) or "board =" in platformio.ini
+- Tool: Arduino IDE version (Help > About), or PlatformIO Core version (run: pio --version)
+- Board package / platform: Arduino IDE > Boards Manager version, or "platform =" in platformio.ini
+- Libraries: name + version, separated by <br> for multiple, or "None"
+- Wiring: link to the pinout in docs/hardware.md
+-->
+
+| Field | Value |
+|---|---|
+| **Board** |  |
+| **Tool** |  |
+| **Board package / platform** |  |
+| **Libraries** |  |
+| **Wiring** | [docs/hardware.md](../../../docs/hardware.md) |
+```
+
 ### Ground rules
 
 - Don't delete folders your subsystem isn't using yet. Leave the stub `README.md` so every subsystem looks the same.
