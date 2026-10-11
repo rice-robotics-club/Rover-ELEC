@@ -7,13 +7,18 @@
 #define TX_PIN GPIO_NUM_5
 #define RX_PIN GPIO_NUM_4
 
-const uint32_t MOTOR_ID  = 6; //ID of Motor to Run
+const uint32_t MOTOR_ID  = 127; //ID of Motor to Run
 const uint32_t MASTER_ID = 253; // Arbitrary ID Assigned to Master
 
 #define CMD_MOTION_CONTROL 0x01
 #define CMD_ENABLE         0x03
 
 twai_node_handle_t node_hdl = NULL;
+
+// CAN Motion Control ID Required for the Robstride Motor Control Protocol
+uint32_t buildMotionControlID(uint8_t controlMode, uint32_t torque, uint32_t target) {
+    return ((uint32_t)controlMode << 24) | (torque << 8) | target;
+}
 
 uint32_t buildID(uint8_t type, uint32_t host, uint32_t target) {
     return ((uint32_t)type << 24) | (host << 8) | target;
@@ -23,7 +28,7 @@ void enableMotor(uint32_t target, uint32_t host) {
     uint8_t data[8] = {0};
     twai_frame_t frame = {
         .header = { 
-            .id = buildID(CMD_ENABLE, host, target), 
+            .id = buildMotionControlID(CMD_ENABLE, 0, target), 
             .ide = true 
         },
         .buffer = data,
@@ -42,15 +47,19 @@ void sendVelocityCommand(float velocity, uint32_t target) {
     data[1] = 0;                       // target angle (unused, Kp = 0)
     data[2] = (q_vel >> 8) & 0xFF;
     data[3] = q_vel & 0xFF;
-    data[4] = 0; data[5] = 0;                       // Kp = 0
+    data[4] = 0; 
+    data[5] = 0;                       // Kp = 0
     data[6] = (q_kd >> 8) & 0xFF;
     data[7] = q_kd & 0xFF;
 
     twai_frame_t frame = {
         .header = { 
-            .id = buildID(CMD_MOTION_CONTROL, 
-            0 /* torque = 0 goes here, see below */, 
-            target), .ide = true 
+            .id = buildID(
+                CMD_MOTION_CONTROL, 
+                0 /* torque = 0 goes here, see below */, 
+                target
+            ), 
+            .ide = true 
         },
         .buffer = data,
         .buffer_len = 8,
@@ -85,5 +94,13 @@ void app_main(void) {
     twai_new_node_onchip(&node_config, &node_hdl);
     twai_node_enable(node_hdl);
 
-    xTaskCreatePinnedToCore(controlRobstrides, "Control Robstride Motors", 4096, NULL, 10, NULL, 1);
+    xTaskCreatePinnedToCore(
+        controlRobstrides, 
+        "Control Robstride Motors", 
+        4096, 
+        NULL, 
+        10, 
+        NULL, 
+        1
+    );
 }
