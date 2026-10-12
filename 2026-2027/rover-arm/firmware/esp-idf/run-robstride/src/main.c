@@ -54,11 +54,7 @@ void sendVelocityCommand(float velocity, uint32_t target) {
 
     twai_frame_t frame = {
         .header = { 
-            .id = buildID(
-                CMD_MOTION_CONTROL, 
-                0 /* torque = 0 goes here, see below */, 
-                target
-            ), 
+            .id = buildID(CMD_MOTION_CONTROL, 0, target), 
             .ide = true 
         },
         .buffer = data,
