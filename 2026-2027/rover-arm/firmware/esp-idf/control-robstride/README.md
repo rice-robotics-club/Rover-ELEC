@@ -13,8 +13,8 @@ How to fill this in:
 
 | Field | Value |
 |---|---|
-| **Board** |  |
-| **Tool** |  |
-| **Board package / platform** |  |
-| **Libraries** |  |
+| **Board** | nodemcu-32s |
+| **Tool** | PlatformIO Core, version 6.1.19 |
+| **Board package / platform** | esp32 by Espressif Systems 7.0.1 |
+| **Libraries** | None |
 | **Wiring** | [docs/hardware.md](../../../docs/hardware.md) |
