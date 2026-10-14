@@ -1,6 +1,6 @@
 # node-name
 
-Short 1-2 sentence summary of what this firmware does and what it connects to.
+This firmware allows the Node MCU ESP-32S to continuously spin a Dynamixel Motor at a constant 1rad/s. The MAX3485 breakout board was used as the RS-485 Transceiver. 
 
 <!--
 How to fill this in:
