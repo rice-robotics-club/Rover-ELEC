@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>motor_control_pkg</name>
+  <version>0.0.0</version>
+  <description>ROS 2 node that sends a byte to an ESP32 over SPI</description>
+  <maintainer email="user@todo.todo">rice-robotics-jetson</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclpy</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
