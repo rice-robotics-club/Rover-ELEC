@@ -181,7 +181,7 @@ void app_main(void) {
     ESP_ERROR_CHECK(twai_node_enable(twai_node_hdl));
 
     // Initialize instance of robstride commands queue
-    robstri 5,deCommandsQueue = xQueueCreate(4, sizeof(robstrideCommands));
+    robstrideCommandsQueue = xQueueCreate(4, sizeof(robstrideCommands));
 
     xTaskCreatePinnedToCore(
         controlRobstrideMotors,
@@ -203,5 +203,4 @@ void app_main(void) {
         1
     );
 }
-
 
