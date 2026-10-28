@@ -11,6 +11,7 @@
 #include "esp_twai.h"
 #include "esp_twai_onchip.h"
 
+#include <string.h>
 #include <math.h>
 
 // Pins Used to Communicate to CAN Transceiver
@@ -59,13 +60,13 @@ static volatile TickType_t lastRx = 0;
 
 
 // CAN Host ID Required for Enabling Robstride Motors
-static uint32_t buildHostID(uint8_t controlMode, uint32_t host, uint32_t targetID) {
-    return ((uint32_t)controlMode << 24) | (host << 8) | targetID;
+static uint32_t buildHostID(uint8_t controlMode, uint32_t host, uint32_t motorID) {
+    return ((uint32_t)controlMode << 24) | (host << 8) | motorID;
 }
 
 // CAN Motion Control ID Required for Operation Control Mode
-static uint32_t buildMotionControlID(uint8_t controlMode, uint32_t torque, uint32_t targetID) {
-    return ((uint32_t)controlMode << 24) | (torque << 8) | targetID;
+static uint32_t buildMotionControlID(uint8_t controlMode, uint32_t torque, uint32_t motorID) {
+    return ((uint32_t)controlMode << 24) | (torque << 8) | motorID;
 }
 
 // Convert Float to Unsigned 16-Bit Integer for Bit Packing Structures, Ensures Value is Clamped to Min and Max Range
@@ -76,8 +77,7 @@ static uint16_t floatToUint16(float x, float x_min, float x_max) {
 }
 
 // Enable Robstride Motor, Ensure to Keep Payloads, Frames, and Relevant Variables Static
-// i is the Index of the Motor in the ACTUATORS Array
-static void enableRobstride(uint32_t host, uint32_t targetID, uint32_t i) {
+static void enableRobstride(uint32_t host, uint32_t motorID, uint32_t i) {
     // Array of Array's to Hold the Payloads for Each Robstride
     static uint8_t payload[NUM_ROBSTRIDES][8] = {{0}};
     // Array of Structs to Hold the Frames for Each Robstride
@@ -85,7 +85,7 @@ static void enableRobstride(uint32_t host, uint32_t targetID, uint32_t i) {
 
     enable[i] = (twai_frame_t){
         .header = {
-            .id = buildHostID(0x03, host, targetID),   // Communication Type 3 - 0x03
+            .id = buildHostID(0x03, host, motorID),    // Communication Type 3 - 0x03
             .ide = true,                               // Use 29-Bit Extended ID Format
         },
         .buffer = payload[i],                          // Pointer to Data to Transmit
@@ -197,11 +197,47 @@ static void uartCommunication(void *parameters) {
     // Local Struct the UART Bytes are Read Into, Not Shared With the Control Task
     commands_t rxCommands;
 
+    // Local Variable Needed for XOR Checksum
+    typedef enum { 
+        WAIT_SYNC1,
+        WAIT_SYNC2, 
+        READ_DATA, 
+        READ_CHECKSUM 
+    } rxState_t;
+
+    rxState_t state = WAIT_SYNC1;
+    uint8_t buffer[3];
+    uint8_t count = 0;
+    uint8_t byte;
+
     while (1) {
         // Block Until the Bytes Arrive or the Timeout Expires, so the Task Sleeps Instead of Spinning
-        if (uart_read_bytes(HOST_UART, (uint8_t*)&rxCommands, sizeof(commands_t), pdMS_TO_TICKS(20)) == (int)sizeof(commands_t)) {
-            xQueueOverwrite(commandsQueue, &rxCommands);
-            lastRx = xTaskGetTickCount();
+        if (uart_read_bytes(HOST_UART, &byte, 1, pdMS_TO_TICKS(20)) != 1) {
+            state = WAIT_SYNC1;       // Timeout, Drop Any Partial Frame
+            continue;
+        }
+
+        // XOR Checksum for UART Port Error Detection
+            switch (state) {
+        case WAIT_SYNC1:
+            if (byte == 0xAA) state = WAIT_SYNC2;
+            break;
+        case WAIT_SYNC2:
+            if (byte == 0x55) { state = READ_DATA; count = 0; }
+            else if (byte != 0xAA) state = WAIT_SYNC1;
+            break;
+        case READ_DATA:
+            buffer[count++] = byte;
+            if (count == 3) state = READ_CHECKSUM;
+            break;
+        case READ_CHECKSUM:
+            if (byte == (buffer[0] ^ buffer[1] ^ buffer[2])) {
+                memcpy(&rxCommands, buffer, sizeof(commands_t));
+                xQueueOverwrite(commandsQueue, &rxCommands);
+                lastRx = xTaskGetTickCount();
+            }
+            state = WAIT_SYNC1;
+            break;
         }
     }
 }
@@ -210,7 +246,7 @@ static void uartCommunication(void *parameters) {
 
 void app_main(void) {
     // Instance of Commands Queue, Length 1 Holds Only the Latest Command
-    commandsQueue = xQueueCreate(1, sizeof(commands_t));
+    commandsQueue = xQueueCreate(1, sizeof(commands_t));    
 
     // Install UART Driver for Communication
     ESP_ERROR_CHECK(uart_driver_install(HOST_UART, 256, 0, 0, NULL, 0));
