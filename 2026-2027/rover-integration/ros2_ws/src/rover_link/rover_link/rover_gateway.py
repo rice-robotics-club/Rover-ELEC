@@ -17,6 +17,7 @@ from rclpy.node import Node
 from std_msgs.msg import Bool
 
 from rover_link.protocol import LineDecoder, encode, motor_value
+from rover_link.steady import steady_timer
 
 
 class RoverGateway(Node):
@@ -39,10 +40,10 @@ class RoverGateway(Node):
         self.failsafe = True
 
         self.cmd_pub = self.create_publisher(Bool, '/rover/motor_cmd', 10)
-        self.create_timer(0.02, self.read_radio)
-        self.create_timer(0.1, self.check_watchdog)
-        self.create_timer(1.0 / float(self.get_parameter('ack_hz').value),
-                          self.send_ack)
+        steady_timer(self, 0.02, self.read_radio)
+        steady_timer(self, 0.1, self.check_watchdog)
+        steady_timer(self, 1.0 / float(self.get_parameter('ack_hz').value),
+                     self.send_ack)
         self.get_logger().info(f'Radio B open on {port} @ {baud} baud')
 
     def read_radio(self):
