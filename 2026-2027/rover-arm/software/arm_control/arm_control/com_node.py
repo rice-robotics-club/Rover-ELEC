@@ -8,7 +8,12 @@ import serial
 import pygame
 
 
+global controller;
+global node;
+
 class JointStatePublisher(Node):
+
+    positions = [0.0,1.2,-0.2]
 
     def __init__(self):
         super().__init__('joint_state_publisher')
@@ -35,17 +40,18 @@ class JointStatePublisher(Node):
             'dof_claw'
         ]
 
-        # Joint positions in radians (or meters for prismatic joints)
-        msg.position = [
-            0.0,
-            1.2,
-            -0.3
-        ]
+        # Joint positions in radians 
+        msg.position = self.positions
         self.publisher.publish(msg)
+
+
 
 
 def main(args=None):
 
+    rclpy.init(args=args)
+
+    
     pygame.init()
     pygame.joystick.init()
 
@@ -53,15 +59,13 @@ def main(args=None):
     if pygame.joystick.get_count() == 0:
         print("No controller detected")
         exit()
-    global controller;
+
+
     controller = pygame.joystick.Joystick(0)
+
     controller.init()
 
     print("Connected:", controller.get_name())
-
-    
-
-    rclpy.init(args=args)
 
     node = JointStatePublisher()
 
@@ -70,14 +74,14 @@ def main(args=None):
     backward = 0b00000000
     checksum = 0b00000000
 
-    #send to the esp
+    #initialize all the motors here
 
     enable = 0b00000000
 
     while rclpy.ok():
         pygame.event.pump()
 
-        # Analog sticks
+        # Use bitmasks to set the forward and backwards bits based on the positions of the left and right sticks
         if round(controller.get_axis(1)) == -1:
             forward |= (1 << 0)
 
@@ -100,18 +104,22 @@ def main(args=None):
 
         checksum = backward ^ forward ^ enable
 
+        full_message = struct.pack('!6B', 0xAA, 0x55, enable, forward, backward, checksum)
+        
         print(f"Forward: {forward:08b}",end=" ",flush=False)
         print(f"Backward {backward:08b}",end=" ",flush=False)
-        print(f"The full message to be sent to the esp: {0xAA:08b}{0x55:08b}{enable:08b}{forward:08b}{backward:08b}{checksum:08b}",end="\r",flush=True)
-        right_y = round(controller.get_axis(3))
-    
-        # Buttons
-        a_button = controller.get_button(0)
-        b_button = controller.get_button(1)
+        print(f"The full message to be sent to the esp: {int.from_bytes(full_message):48b}",end="\r",flush=True)
+
+
+        #TODO transmit the full message to the esp, and read the values it sends. Both will be done via serial.
 
         
-        
 
+        #changing the position of the arm in rviz is as simple as this. 
+        node.positions[0] += 0.01
+
+
+        #this updtates the position
         rclpy.spin_once (node)
 
     node.destroy_node()
