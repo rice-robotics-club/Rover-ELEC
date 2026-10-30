@@ -17,6 +17,7 @@ from rclpy.node import Node
 from std_msgs.msg import String
 
 from rover_link.protocol import LineDecoder, encode
+from rover_link.steady import steady_timer
 
 MAX_PACKET = 200  # bytes on the wire, including the newline
 
@@ -47,9 +48,9 @@ class TopicBridge(Node):
             self.create_subscription(String, tx_topic, self.on_tx, 10)
         self.rx_pub = self.create_publisher(String, rx_topic, 10) if rx_topic else None
 
-        self.create_timer(1.0 / float(self.get_parameter('max_hz').value), self.send)
-        self.create_timer(0.02, self.read_radio)
-        self.create_timer(float(self.get_parameter('stats_period').value), self.log_stats)
+        steady_timer(self, 1.0 / float(self.get_parameter('max_hz').value), self.send)
+        steady_timer(self, 0.02, self.read_radio)
+        steady_timer(self, float(self.get_parameter('stats_period').value), self.log_stats)
         self.get_logger().info(
             f'Radio on {port} @ {baud}: sending "{tx_topic}", publishing "{rx_topic}"')
 

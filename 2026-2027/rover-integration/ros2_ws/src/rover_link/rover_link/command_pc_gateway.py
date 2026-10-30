@@ -17,6 +17,10 @@ from rclpy.node import Node
 from std_msgs.msg import Bool
 
 from rover_link.protocol import LineDecoder, encode
+from rover_link.steady import steady_timer
+
+STALL_S = 0.3   # a timer/callback that runs this much later than expected is logged
+SLOW_S = 0.05   # a serial write or publish slower than this is logged
 
 
 class CommandPCGateway(Node):
@@ -41,16 +45,27 @@ class CommandPCGateway(Node):
         self.last_cmd_time = None    # monotonic time of last control message
         self.last_ack_time = None    # monotonic time of last ack from rover
         self.link_ok = False
+        self._ticks = {}             # callback name -> monotonic time of last run
 
         self.create_subscription(Bool, '/station/motor_cmd', self.on_cmd, 10)
         self.link_pub = self.create_publisher(Bool, '/station/link_ok', 10)
-        self.create_timer(1.0 / float(self.get_parameter('send_hz').value),
-                          self.send_state)
-        self.create_timer(0.02, self.read_radio)
+        steady_timer(self, 1.0 / float(self.get_parameter('send_hz').value),
+                     self.send_state)
+        steady_timer(self, 0.02, self.read_radio)
         self.get_logger().info(f'Radio A open on {port} @ {baud} baud')
+
+    # ---- diagnostics ----------------------------------------------------
+    def _tick_check(self, name):
+        """Warn if a callback runs much later than its period (executor stall)."""
+        now = time.monotonic()
+        last = self._ticks.get(name)
+        self._ticks[name] = now
+        if last is not None and now - last > STALL_S:
+            self.get_logger().warn(f'STALL: {name} did not run for {now - last:.2f} s')
 
     # ---- outgoing -------------------------------------------------------
     def on_cmd(self, msg: Bool):
+        self._tick_check('on_cmd')
         self.last_cmd_time = time.monotonic()
         if msg.data != self.motor_on:
             self.motor_on = msg.data
@@ -58,6 +73,7 @@ class CommandPCGateway(Node):
             self.send_state()  # don't wait for the next heartbeat
 
     def send_state(self):
+        self._tick_check('send_state')
         now = time.monotonic()
         if self.motor_on and (self.last_cmd_time is None
                               or now - self.last_cmd_time > self.cmd_timeout):
@@ -66,14 +82,19 @@ class CommandPCGateway(Node):
         self._write(encode(t='motor', v=int(self.motor_on)))
 
     def _write(self, packet: bytes):
+        t0 = time.monotonic()
         try:
             self.ser.write(packet)
         except (serial.SerialException, OSError) as e:
             self.get_logger().error(f'Radio write failed: {e}',
                                     throttle_duration_sec=2.0)
+        took = time.monotonic() - t0
+        if took > SLOW_S:
+            self.get_logger().warn(f'SLOW: serial write took {took:.2f} s')
 
     # ---- incoming -------------------------------------------------------
     def read_radio(self):
+        self._tick_check('read_radio')
         try:
             data = self.ser.read(256)
         except (serial.SerialException, OSError) as e:
@@ -91,7 +112,11 @@ class CommandPCGateway(Node):
         if ok != self.link_ok:
             self.link_ok = ok
             self.get_logger().info('Rover link UP' if ok else 'Rover link LOST')
+        t0 = time.monotonic()
         self.link_pub.publish(Bool(data=self.link_ok))
+        took = time.monotonic() - t0
+        if took > SLOW_S:
+            self.get_logger().warn(f'SLOW: ROS publish took {took:.2f} s')
 
     def close(self):
         for _ in range(3):  # best effort: leave the rover stopped
