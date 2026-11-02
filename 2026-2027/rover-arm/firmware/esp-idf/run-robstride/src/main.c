@@ -7,9 +7,7 @@
 #define TX_PIN GPIO_NUM_5
 #define RX_PIN GPIO_NUM_4
 
-// Radnome\\\\\\\\cvgdfbtfhfddbvrd
-
-const uint32_t MOTOR_ID  = 127; //ID of Motor to Run
+const uint32_t MOTOR_ID  = 0x07; //ID of Motor to Run
 const uint32_t MASTER_ID = 253; // Arbitrary ID Assigned to Master
 
 #define CMD_MOTION_CONTROL 0x01

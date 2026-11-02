@@ -97,7 +97,6 @@ static void enableRobstride(uint32_t host, uint32_t motorID, uint32_t i) {
 }
 
 // Use Command Payload to Transmit Robstride Motor Control Commands, Ensure to Keep Payloads, Frames, and Relevant Variables Static
-// i is the Index of the Motor in the ACTUATORS Array
 static void transmitRobstridePayload(uint32_t i, float velocity) {
     static twai_frame_t tx_frame[NUM_ROBSTRIDES];
     static uint8_t payload[NUM_ROBSTRIDES][8];
@@ -111,12 +110,13 @@ static void transmitRobstridePayload(uint32_t i, float velocity) {
 
     // Robstride Payload Commands
     uint16_t vel = floatToUint16(ACTUATORS[i].velocity, -44.0f, 44.0f);
+
     uint16_t torque = floatToUint16(0.0f, -17.0f, 17.0f);
     uint16_t position = floatToUint16(0.0f, -4.0f * 3.14159265f, 4.0f * 3.14159265f);
 
     // Kp and Kd Values
     uint16_t Kp = floatToUint16(0.0f, 0.0f, 500.0f);
-    uint16_t Kd = floatToUint16(0.5f, 0.0f, 5.0f);
+    uint16_t Kd = floatToUint16(50.0f, 0.0f, 5.0f);
 
     payload[i][0] = (uint8_t)((position >> 8) & 0xFF);
     payload[i][1] = (uint8_t)(position & 0xFF);
@@ -173,10 +173,10 @@ static void controlRobstrideMotors(void *parameters) {
                     transmitRobstridePayload(i, 0.0f);
                 // Motors to Move Forward
                 } else if ((commands.forward >> i) & BIT_MASK) {
-                    transmitRobstridePayload(i, 5.0f);
+                    transmitRobstridePayload(i, 2.0f);
                 // Motors to Move Backward
                 } else {
-                    transmitRobstridePayload(i, -5.0f);
+                    transmitRobstridePayload(i, -2.0f);
                 }
             }
         } else {
