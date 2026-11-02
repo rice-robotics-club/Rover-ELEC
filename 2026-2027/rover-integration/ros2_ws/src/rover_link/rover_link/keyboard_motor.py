@@ -18,19 +18,19 @@ HELP = "Motor control:  1 = ON   0 = OFF   q = quit"
 
 
 def main(args=None):
-    if not sys.stdin.isatty():
+    if not sys.stdin.isatty(): #tty means terminal, we need that
         sys.exit('keyboard_motor needs an interactive terminal')
 
-    rclpy.init(args=args)
-    node = rclpy.create_node('keyboard_motor')
-    pub = node.create_publisher(Bool, '/station/motor_cmd', 10)
-    settings = termios.tcgetattr(sys.stdin)
-    motor_on = False
+    rclpy.init(args=args) #start ROS
+    node = rclpy.create_node('keyboard_motor') #make this node
+    pub = node.create_publisher(Bool, '/station/motor_cmd', 10) #make a publisher motor command
+    settings = termios.tcgetattr(sys.stdin) #save terminal settings 
+    motor_on = False #default off motor
     print(HELP)
     try:
         tty.setcbreak(sys.stdin.fileno())  # keeps Ctrl-C working
-        while rclpy.ok():
-            if select.select([sys.stdin], [], [], 0.1)[0]:
+        while rclpy.ok(): #if ROS is working
+            if select.select([sys.stdin], [], [], 0.1)[0]: #wait for the user input for 0.1 secs
                 key = sys.stdin.read(1)
                 if key == '1':
                     motor_on = True
@@ -40,11 +40,11 @@ def main(args=None):
                     print('motor OFF ')
                 elif key in ('q', 'Q'):
                     break
-            pub.publish(Bool(data=motor_on))
+            pub.publish(Bool(data=motor_on)) #now publish that boolean
     except KeyboardInterrupt:
         pass
     finally:
-        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings) #restores the terminal after q or crtl c
         node.destroy_node()
         rclpy.shutdown()
 

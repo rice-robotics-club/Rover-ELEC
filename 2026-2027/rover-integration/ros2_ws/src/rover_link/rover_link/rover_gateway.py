@@ -26,7 +26,7 @@ class RoverGateway(Node):
         self.declare_parameter('port', '/dev/ttyUSB0')
         self.declare_parameter('baud', 57600)
         self.declare_parameter('watchdog_timeout', 0.5)
-        self.declare_parameter('ack_hz', 2.0)
+        self.declare_parameter('ack_hz', 2.0) #how often the rover sends acknowledgements
 
         port = self.get_parameter('port').value
         baud = int(self.get_parameter('baud').value)
@@ -36,11 +36,11 @@ class RoverGateway(Node):
         self.decoder = LineDecoder()
 
         self.motor_on = False
-        self.last_rx_time = None
+        self.last_rx_time = None 
         self.failsafe = True
 
-        self.cmd_pub = self.create_publisher(Bool, '/rover/motor_cmd', 10)
-        steady_timer(self, 0.02, self.read_radio)
+        self.cmd_pub = self.create_publisher(Bool, '/rover/motor_cmd', 10) #make a local publisher for the motor cmd
+        steady_timer(self, 0.02, self.read_radio) #these functions are now executed forever after rclpy.spin goes through
         steady_timer(self, 0.1, self.check_watchdog)
         steady_timer(self, 1.0 / float(self.get_parameter('ack_hz').value),
                      self.send_ack)
@@ -48,37 +48,38 @@ class RoverGateway(Node):
 
     def read_radio(self):
         try:
-            data = self.ser.read(256)
+            data = self.ser.read(256) #read up to 256 bytes
         except (serial.SerialException, OSError) as e:
             self.get_logger().error(f'Radio read failed: {e}',
                                     throttle_duration_sec=2.0)
             return
-        for msg in self.decoder.feed(data):
-            value = motor_value(msg)
+        for msg in self.decoder.feed(data): #for each message which hopefully looks like a {"t":"motor","v":1}\n
+            value = motor_value(msg) #looks like  if msg.get('t') == 'motor' and msg.get('v') in (0, 1):
+                                                             #return bool(msg['v']) this is where its rly getting the bool from the dict
             if value is None:
                 continue
-            self.last_rx_time = time.monotonic()
-            if self.failsafe:
+            self.last_rx_time = time.monotonic() #last receive time is now now
+            if self.failsafe: #go out of failsafe if in it
                 self.failsafe = False
                 self.get_logger().info('Radio link established')
-            if value != self.motor_on:
+            if value != self.motor_on: #if what we got was different from last log
                 self.get_logger().info(f'Motor {"ON" if value else "OFF"}')
-            self.motor_on = value
-            self.cmd_pub.publish(Bool(data=value))
+            self.motor_on = value #update the rover side value
+            self.cmd_pub.publish(Bool(data=value)) #publish the value rover side which will be used in spi_bit
 
     def check_watchdog(self):
         stale = (self.last_rx_time is None
                  or time.monotonic() - self.last_rx_time > self.watchdog_timeout)
         if stale:
             if not self.failsafe:
-                self.failsafe = True
+                self.failsafe = True # go into failsafe if its stale -> turns motor off bc we dont know what is wanted (who cares)
                 self.get_logger().warn('Radio silent: failsafe, motor OFF')
             self.motor_on = False
-            self.cmd_pub.publish(Bool(data=False))
+            self.cmd_pub.publish(Bool(data=False)) #publish it locally (subbed by spi_bit)
 
     def send_ack(self):
         try:
-            self.ser.write(encode(t='ack', v=int(self.motor_on),
+            self.ser.write(encode(t='ack', v=int(self.motor_on), #send over the radio link serially the data which looks like {"t":"ack","v":1,"ok":1}\n
                                   ok=int(not self.failsafe)))
         except (serial.SerialException, OSError) as e:
             self.get_logger().error(f'Radio write failed: {e}',
