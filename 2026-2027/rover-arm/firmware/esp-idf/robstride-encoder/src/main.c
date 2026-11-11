@@ -17,8 +17,8 @@
 const uint32_t hostID = 253;
 
 // Pins Used to Communicate to CAN Transceiver
-#define TX_PIN GPIO_NUM_5
-#define RX_PIN GPIO_NUM_4
+#define TX_PIN GPIO_NUM_10
+#define RX_PIN GPIO_NUM_9
 
 // Define Robstride Command Payload Struct
 typedef struct {
@@ -70,7 +70,7 @@ void enableRobstride(uint32_t host, uint32_t target) {
         .buffer_len = sizeof(payload[s]),            // Length of Data to Transmit
     };
 
-    ESP_ERROR_CHECK(twai_node_transmit(twai_node_hdl, &enable[s], 0));
+    twai_node_transmit(twai_node_hdl, &enable[s], pdMS_TO_TICKS(10));
 }
 
 static uint16_t floatToUint16(float x, float x_min, float x_max) {
@@ -132,6 +132,9 @@ void controlRobstrideMotors(void *parameter) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t period = pdMS_TO_TICKS(10); //100Hz
 
+    // Wait 1 second after boot before enabling motors
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    
     // Enable All Robstride Motors
     enableRobstride(hostID, 0x06);
     enableRobstride(hostID, 0x07);
@@ -164,11 +167,10 @@ static bool IRAM_ATTR twai_rx_cb(twai_node_handle_t handle, const twai_rx_done_e
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     
     // Allocate temporary memory for the incoming data
-    uint8_t recv_buff[8];
-    twai_frame_t rx_frame = {
-        .buffer = recv_buff,
-        .buffer_len = sizeof(recv_buff)
-    };
+    uint8_t recv_buff[8] = {0};
+    twai_frame_t rx_frame = {0};
+    rx_frame.buffer = recv_buff;
+    rx_frame.buffer_len = sizeof(recv_buff);
     
     // Physically pull the frame out of the hardware register
     if (twai_node_receive_from_isr(handle, &rx_frame) == ESP_OK) {
@@ -205,7 +207,7 @@ void receiveRobstrideData(void *parameter) {
                 uint16_t pos_int = (rx_msg.buffer[0] << 8) | rx_msg.buffer[1];
                 uint16_t vel_int = (rx_msg.buffer[2] << 8) | rx_msg.buffer[3];
                 uint16_t trq_int = (rx_msg.buffer[4] << 8) | rx_msg.buffer[5];
-                uint16_t  temp_int = (rx_msg.buffer[6] << 8) | rx_msg.buffer[7];
+                uint16_t temp_int = (rx_msg.buffer[6] << 8) | rx_msg.buffer[7];
                 
                 // Convert back to physical values
                 float actual_position = uint16ToFloat(pos_int, -4.0f * 3.14159265f, 4.0f * 3.14159265f);
