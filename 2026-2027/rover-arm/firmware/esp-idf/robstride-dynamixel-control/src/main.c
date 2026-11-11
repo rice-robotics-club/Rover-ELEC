@@ -69,7 +69,7 @@ typedef struct {
 // Array of Actuators, the Index of an Actuator is Also its Bit Position in commands_t
 static actuator_t ACTUATORS[NUM_ACTUATORS] = {
     {0x07, 0, 0.0f},
-    {0x06, 0, 0.0f}, // 0x7F
+    {0x7F, 0, 0.0f}, // 0x7F
     {0x04, 0, 0.0f}
 };
 
@@ -153,7 +153,7 @@ static void transmitRobstridePayload(uint32_t i, float velocity) {
 
     // Kp and Kd Values
     uint16_t Kp = floatToUint16(0.0f, 0.0f, 500.0f);
-    uint16_t Kd = floatToUint16(0.5f, 0.0f, 5.0f);
+    uint16_t Kd = floatToUint16(50.0f, 0.0f, 5.0f);
 
     txPayload[i][0] = (uint8_t)((position >> 8) & 0xFF);
     txPayload[i][1] = (uint8_t)(position & 0xFF);

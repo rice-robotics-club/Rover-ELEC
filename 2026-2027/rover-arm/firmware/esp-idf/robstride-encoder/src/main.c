@@ -273,6 +273,7 @@ void app_main(void) {
         NULL,
         1
     );
+    
     xTaskCreatePinnedToCore(
         receiveRobstrideData,
         "Receive Robstride Data",
