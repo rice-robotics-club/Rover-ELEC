@@ -15,7 +15,7 @@ In every other case the output is 0, 0:
   - an e-stop is active (see below)
 The output is published at a steady rate (zeros included), so the node after this
 one (master_spi) can tell this node is still alive.
-
+Added k variable to multiply drive and limit speed
 E-stop: every /rover/estop True message sets the output to 0, 0 at once and restarts
 a hold of estop_hold seconds (the station sends five in a row). The e-stop ends
 only when BOTH are true: the hold has run out, and the drive command is back at
@@ -46,6 +46,7 @@ class ManualDrive(Node):
 
         self.manual = False          # latest /manual value, False until one arrives
         self.drive = (0.0, 0.0)      # latest (right, left) from /rover/drive_cmd
+        self.k = 0.5                 # variable less than one to restrict speed
         self.last_cmd_time = None    # monotonic time of the last /rover/drive_cmd
         self.quiet = False           # manual is on but drive_cmd is stale (only for logging)
         self.estopped = False        # an e-stop is active: output is held at 0, 0
@@ -81,8 +82,8 @@ class ManualDrive(Node):
             self.get_logger().warn('drive_cmd needs exactly two finite values [right, left]: ignored',
                                    throttle_duration_sec=2.0)
             return
-        # clamp to -1..1 and store; publish_out sends it at a steady rate
-        self.drive = tuple(max(-1.0, min(1.0, float(v))) for v in msg.data)
+        # clamp to -1..1, multiply by k to limit speed, and store; publish_out sends it at a steady rate
+        self.drive = tuple((max(-1.0, min(1.0, float(v))) * self.k) for v in msg.data)
         self.last_cmd_time = time.monotonic()
 
     def publish_out(self):
