@@ -24,6 +24,8 @@ setup(
             'topic_bridge = rover_link.topic_bridge:main',
             'demo_talker = rover_link.demo_talker:main',
             'demo_echo = rover_link.demo_echo:main',
+            'manual_drive = rover_link.manual_drive:main',
+            'master_spi = rover_link.master_spi:main',
         ],
     },
 )
