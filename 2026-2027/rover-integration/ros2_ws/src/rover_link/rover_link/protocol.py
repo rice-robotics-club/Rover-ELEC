@@ -11,7 +11,7 @@ MAX_LINE = 256  # bytes; anything longer without a newline is treated as garbage
 
 def encode(**fields) -> bytes:
     """Build one newline-terminated JSON packet."""
-    return (json.dumps(fields, separators=(',', ':')) + '\n').encode('utf-8')
+    return (json.dumps(fields, separators=(',', ':')) + '\n').encode('utf-8') #no spaces to save bytes
 
 
 class LineDecoder:
@@ -24,7 +24,7 @@ class LineDecoder:
     def __init__(self):
         self._buf = bytearray()
 
-    def feed(self, data: bytes):
+    def feed(self, data: bytes): #add new bytes to the array
         self._buf.extend(data)
         messages = []
         while True:
@@ -32,15 +32,15 @@ class LineDecoder:
             if end < 0:
                 break
             line = bytes(self._buf[:end]).strip()
-            del self._buf[:end + 1]
-            if not line:
+            del self._buf[:end + 1] 
+            if not line: #skip empty lines
                 continue
             try:
-                obj = json.loads(line.decode('utf-8'))
+                obj = json.loads(line.decode('utf-8')) #try to load it as a json as expected
             except (UnicodeDecodeError, json.JSONDecodeError):
                 continue
-            if isinstance(obj, dict):
-                messages.append(obj)
+            if isinstance(obj, dict): #only keep dicts 
+                messages.append(obj) #add what we got
         if len(self._buf) > MAX_LINE:  # no newline in sight: junk, start over
             self._buf.clear()
         return messages
